@@ -76,6 +76,7 @@ This platform eliminates "simulated verification" in LLM evaluation tasks by:
    - API: http://localhost:8000
    - Docs: http://localhost:8000/docs
    - Database: postgresql://postgres:postgres@localhost:5432/evalops
+   - Ingestion UI: http://localhost:8000/ingest
 
 ## 📖 API Usage
 
@@ -205,6 +206,39 @@ curl -X POST http://localhost:8000/api/v1/executions/exec-789/submit \
       }
     ]
   }
+}
+```
+
+### 5. Ingest raw Haiku output
+
+Use the minimal UI at `/ingest` or call the API directly:
+
+```bash
+curl -X POST http://localhost:8000/api/v1/ingest \
+  -H "Content-Type: application/json" \
+  -d '{ "raw_text": "DEBUG INFO: query=Coffee\nRATINGS TABLE: Pin Accuracy | Correct | Clear storefront\nERRORS: 1 | field: Pin Accuracy | to: Incorrect | rationale: different business"}'
+```
+
+**Response**
+```json
+{
+  "submission_id": "6f8c1c4e-b4ad-4f4a-bd4b-64c0957d0123",
+  "parsed": {
+    "debug_info": { ... },
+    "ratings_table": [{ "field": "Pin Accuracy", "answer": "Correct", "details": "Clear storefront" }],
+    "errors": [{ "field": "Pin Accuracy", "rationale_text": "different business" }],
+    "artifact_refs": []
+  },
+  "patch_preview": "--- /app/rubrics/maps_evaluation.md\n+++ /app/rubrics/maps_evaluation.md (patched)\n@@\n ## Additional Rules\n- If visible label on satellite conflicts with result name \u2192 Pin Accuracy = Wrong",
+  "verifier_violations": [
+    {
+      "verifier": "observation_specificity",
+      "passed": false,
+      "violations": [
+        { "reason": "Rationale too short (8 words, expected at least 10)", "rule": "observation_specificity", "field": "rationale" }
+      ]
+    }
+  ]
 }
 ```
 
