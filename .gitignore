@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+*.egg-info/
+
+# Database
+*.db
+*.sqlite
+
+# Environment
+.env
+*.env
+
+# Docker volumes
+postgres_data/
+artifacts_data/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Artifacts
+backend/artifacts/
