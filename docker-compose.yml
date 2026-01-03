@@ -23,6 +23,7 @@ services:
       - DATABASE_URL=postgresql://postgres:postgres@db:5432/evalops
       - STORAGE_TYPE=local
       - STORAGE_PATH=/app/artifacts
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
     volumes:
       - ./backend:/app
       - artifacts_data:/app/artifacts

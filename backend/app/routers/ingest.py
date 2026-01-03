@@ -1,5 +1,7 @@
 import difflib
 import json
+import logging
+import os
 import re
 import uuid
 from datetime import datetime
@@ -18,7 +20,10 @@ from app.schemas.ingest import (
     ParsedError,
     ParsedPayload,
 )
+from app.services.llm_preprocessor import preprocess_with_haiku
 from app.services.verifier_engine import VerificationViolation, VerifierEngine
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["ingest"])
 
@@ -257,6 +262,38 @@ def _run_verifiers(raw_text: str, artifact_refs: List[str]) -> List[Dict[str, An
     return results
 
 
+def _parse_with_fallback(eval_text: str) -> ParsedPayload:
+    """
+    Try Haiku preprocessing first, fall back to regex parsing if unavailable.
+    """
+    # Check if Anthropic API key is configured
+    if os.getenv("ANTHROPIC_API_KEY"):
+        try:
+            parsed_data = preprocess_with_haiku(eval_text)
+            # Convert errors to ParsedError objects
+            errors = []
+            for err in parsed_data.get("errors", []):
+                if isinstance(err, dict):
+                    errors.append(ParsedError(**err))
+            return ParsedPayload(
+                debug_info=parsed_data.get("debug_info", {}),
+                ratings_table=parsed_data.get("ratings_table", []),
+                errors=errors,
+                artifact_refs=_extract_artifact_refs(eval_text),
+            )
+        except Exception as e:
+            logger.warning(f"Haiku preprocessing failed, falling back to regex: {e}")
+
+    # Fallback to regex parsing
+    sections = _extract_sections(eval_text)
+    return ParsedPayload(
+        debug_info=_parse_debug_info(sections.get("debug info", "")),
+        ratings_table=_parse_ratings_table(sections.get("ratings table", "")),
+        errors=_parse_errors(sections.get("errors", "")),
+        artifact_refs=_extract_artifact_refs(eval_text),
+    )
+
+
 @router.post("/", response_model=IngestResponse)
 def ingest_output(payload: IngestRequest, db: Session = Depends(get_db)):
     raw_text = payload.raw_text.strip()
@@ -272,13 +309,8 @@ def ingest_output(payload: IngestRequest, db: Session = Depends(get_db)):
         eval_text, detected_prompt = _split_eval_and_prompt(raw_text)
         agent_prompt = detected_prompt
 
-    sections = _extract_sections(eval_text)
-    parsed_payload = ParsedPayload(
-        debug_info=_parse_debug_info(sections.get("debug info", "")),
-        ratings_table=_parse_ratings_table(sections.get("ratings table", "")),
-        errors=_parse_errors(sections.get("errors", "")),
-        artifact_refs=_extract_artifact_refs(eval_text),
-    )
+    # Use Haiku preprocessing with regex fallback
+    parsed_payload = _parse_with_fallback(eval_text)
 
     patch_preview, patch_data = _generate_rubric_patch(parsed_payload.errors, DEFAULT_RUBRIC_PATH)
     verifier_results = _run_verifiers(eval_text, parsed_payload.artifact_refs)
