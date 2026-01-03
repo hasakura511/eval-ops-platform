@@ -20,7 +20,7 @@ from app.schemas.ingest import (
     ParsedError,
     ParsedPayload,
 )
-from app.services.llm_preprocessor import preprocess_with_haiku
+from app.services.llm_preprocessor import preprocess_with_llm, preprocess_with_haiku
 from app.services.verifier_engine import VerificationViolation, VerifierEngine
 
 logger = logging.getLogger(__name__)
@@ -264,17 +264,34 @@ def _run_verifiers(raw_text: str, artifact_refs: List[str]) -> List[Dict[str, An
 
 def _parse_with_fallback(eval_text: str) -> ParsedPayload:
     """
-    Try Haiku preprocessing first, fall back to regex parsing if unavailable.
+    Try Ollama LLM first, fall back to Haiku, then regex parsing.
     """
-    # Check if Anthropic API key is configured
+    # Try Ollama first (local LLM)
+    try:
+        parsed_data = preprocess_with_llm(eval_text)
+        errors = []
+        for err in parsed_data.get("errors", []):
+            if isinstance(err, dict):
+                errors.append(ParsedError(**err))
+        logger.info("Successfully parsed with Ollama LLM")
+        return ParsedPayload(
+            debug_info=parsed_data.get("debug_info", {}),
+            ratings_table=parsed_data.get("ratings_table", []),
+            errors=errors,
+            artifact_refs=_extract_artifact_refs(eval_text),
+        )
+    except Exception as e:
+        logger.warning(f"Ollama preprocessing failed: {e}")
+
+    # Try Haiku as fallback if API key is configured
     if os.getenv("ANTHROPIC_API_KEY"):
         try:
             parsed_data = preprocess_with_haiku(eval_text)
-            # Convert errors to ParsedError objects
             errors = []
             for err in parsed_data.get("errors", []):
                 if isinstance(err, dict):
                     errors.append(ParsedError(**err))
+            logger.info("Successfully parsed with Haiku fallback")
             return ParsedPayload(
                 debug_info=parsed_data.get("debug_info", {}),
                 ratings_table=parsed_data.get("ratings_table", []),
@@ -284,7 +301,8 @@ def _parse_with_fallback(eval_text: str) -> ParsedPayload:
         except Exception as e:
             logger.warning(f"Haiku preprocessing failed, falling back to regex: {e}")
 
-    # Fallback to regex parsing
+    # Final fallback to regex parsing
+    logger.info("Using regex fallback parsing")
     sections = _extract_sections(eval_text)
     return ParsedPayload(
         debug_info=_parse_debug_info(sections.get("debug info", "")),
