@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Haiku Output Ingestion</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; background: #f7f7f7; }
+    textarea { width: 100%; height: 200px; }
+    .section { margin-top: 20px; padding: 15px; background: #fff; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    pre { background: #111; color: #0f0; padding: 10px; overflow-x: auto; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    button { padding: 10px 16px; border: none; background: #2563eb; color: #fff; border-radius: 4px; cursor: pointer; }
+    button:disabled { background: #cbd5e1; cursor: not-allowed; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { border: 1px solid #e2e8f0; padding: 8px; text-align: left; }
+    th { background: #f1f5f9; }
+    .error { color: #b91c1c; }
+  </style>
+</head>
+<body>
+  <h1>Haiku Evaluation Ingestion</h1>
+  <div class="section">
+    <textarea id="rawText" placeholder="Paste Haiku evaluation output here..."></textarea>
+    <div style="margin-top: 10px;">
+      <button onclick="ingest()">Ingest</button>
+      <button id="applyBtn" onclick="applyPatch()" disabled>Apply Patch</button>
+      <span id="status"></span>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="section">
+      <h3>Debug Info</h3>
+      <pre id="debugInfo">—</pre>
+    </div>
+    <div class="section">
+      <h3>Ratings</h3>
+      <table id="ratingsTable">
+        <thead><tr><th>Field</th><th>Answer</th><th>Details</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="section">
+      <h3>Errors</h3>
+      <pre id="errors">—</pre>
+    </div>
+    <div class="section">
+      <h3>Verifier Violations</h3>
+      <pre id="violations">—</pre>
+    </div>
+  </div>
+
+  <div class="section">
+    <h3>Patch Preview</h3>
+    <pre id="patchPreview">—</pre>
+  </div>
+
+  <script>
+    let submissionId = null;
+
+    function setStatus(msg, isError = false) {
+      const status = document.getElementById('status');
+      status.textContent = msg;
+      status.className = isError ? 'error' : '';
+    }
+
+    async function ingest() {
+      setStatus('Submitting...');
+      document.getElementById('applyBtn').disabled = true;
+      submissionId = null;
+
+      const rawText = document.getElementById('rawText').value;
+      try {
+        const res = await fetch('/api/v1/ingest', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ raw_text: rawText })
+        });
+        if (!res.ok) {
+          const err = await res.json();
+          setStatus(err.detail || 'Ingest failed', true);
+          return;
+        }
+        const data = await res.json();
+        submissionId = data.submission_id;
+        document.getElementById('debugInfo').textContent = JSON.stringify(data.parsed.debug_info, null, 2);
+        renderRatings(data.parsed.ratings_table);
+        document.getElementById('errors').textContent = JSON.stringify(data.parsed.errors, null, 2);
+        document.getElementById('patchPreview').textContent = data.patch_preview || 'No patch generated';
+        document.getElementById('violations').textContent = JSON.stringify(data.verifier_violations, null, 2);
+        document.getElementById('applyBtn').disabled = !data.patch_preview;
+        setStatus('Ingestion complete');
+      } catch (e) {
+        setStatus(e.message, true);
+      }
+    }
+
+    async function applyPatch() {
+      if (!submissionId) {
+        setStatus('No submission to apply', true);
+        return;
+      }
+      setStatus('Applying patch...');
+      try {
+        const res = await fetch(`/api/v1/ingest/${submissionId}/apply`, { method: 'POST' });
+        if (!res.ok) {
+          const err = await res.json();
+          setStatus(err.detail || 'Apply failed', true);
+          return;
+        }
+        const data = await res.json();
+        setStatus(data.already_applied ? 'Patch already applied' : 'Patch applied');
+      } catch (e) {
+        setStatus(e.message, true);
+      }
+    }
+
+    function renderRatings(rows) {
+      const tbody = document.querySelector('#ratingsTable tbody');
+      tbody.innerHTML = '';
+      if (!rows || !rows.length) {
+        const tr = document.createElement('tr');
+        const td = document.createElement('td');
+        td.colSpan = 3;
+        td.textContent = 'No ratings';
+        tr.appendChild(td);
+        tbody.appendChild(tr);
+        return;
+      }
+      rows.forEach(row => {
+        const tr = document.createElement('tr');
+        ['field', 'answer', 'details'].forEach(key => {
+          const td = document.createElement('td');
+          td.textContent = row[key] || '';
+          tr.appendChild(td);
+        });
+        tbody.appendChild(tr);
+      });
+    }
+  </script>
+</body>
+</html>

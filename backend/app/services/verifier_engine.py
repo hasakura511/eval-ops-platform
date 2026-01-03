@@ -40,7 +40,9 @@ class VerifierEngine:
             'banned_phrases': self._verify_banned_phrases,
             'required_fields': self._verify_required_fields,
             'diff_complete': self._verify_diff_complete,
-            'screenshot_hash_valid': self._verify_screenshot_hash_valid
+            'screenshot_hash_valid': self._verify_screenshot_hash_valid,
+            'artifact_referenced': self._verify_artifact_referenced,
+            'observation_specificity': self._verify_observation_specificity
         }
     
     def verify(
@@ -375,6 +377,69 @@ class VerifierEngine:
                     evidence={'hash': hash_val}
                 ))
         
+        return violations
+    
+    def _verify_artifact_referenced(
+        self,
+        artifacts: List[Dict[str, Any]],
+        execution: Dict[str, Any],
+        config: Dict[str, Any]
+    ) -> List[VerificationViolation]:
+        """Verify artifact references in rationale exist."""
+        violations = []
+        rationale = (execution.get('decision', {}) or {}).get('rationale', '') or ''
+
+        claimed_ids = set(re.findall(r'[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}', rationale))
+        artifact_ids = {a.get('id') for a in artifacts if a.get('id')}
+
+        if claimed_ids and not artifact_ids:
+            violations.append(VerificationViolation(
+                rule='artifact_referenced',
+                field='artifacts',
+                reason='Rationale references artifacts but none were provided'
+            ))
+        else:
+            for claimed in claimed_ids:
+                if claimed not in artifact_ids:
+                    violations.append(VerificationViolation(
+                        rule='artifact_referenced',
+                        field='artifacts',
+                        reason=f'Referenced artifact {claimed} not found in submission',
+                        evidence={'claimed': claimed}
+                    ))
+        return violations
+
+    def _verify_observation_specificity(
+        self,
+        artifacts: List[Dict[str, Any]],
+        execution: Dict[str, Any],
+        config: Dict[str, Any]
+    ) -> List[VerificationViolation]:
+        """Detect vague observation language."""
+        violations = []
+        rationale = (execution.get('decision', {}) or {}).get('rationale', '') or ''
+        rationale_lower = rationale.lower()
+        vague_phrases = config.get('vague_phrases', [
+            'looks fine', 'seems fine', 'probably', 'maybe', 'appears to be',
+            'not sure', "can't tell", 'unclear'
+        ])
+        min_words = config.get('min_words', 10)
+
+        if len(rationale.split()) < min_words:
+            violations.append(VerificationViolation(
+                rule='observation_specificity',
+                field='rationale',
+                reason=f'Rationale too short ({len(rationale.split())} words, expected at least {min_words})'
+            ))
+
+        for phrase in vague_phrases:
+            if phrase in rationale_lower:
+                violations.append(VerificationViolation(
+                    rule='observation_specificity',
+                    field='rationale',
+                    reason=f'Vague language detected: "{phrase}"'
+                ))
+
         return violations
 
 
