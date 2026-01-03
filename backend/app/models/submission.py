@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, Column, DateTime, JSON, Text
+from sqlalchemy import Boolean, Column, DateTime, JSON, String, Text
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.sql import func
 
@@ -26,3 +26,9 @@ class Submission(Base):
     patch_applied = Column(Boolean, default=False)
     patch_applied_at = Column(DateTime(timezone=True))
     verifier_results = Column(JSON)
+
+    # Evaluation context fields
+    agent_prompt = Column(Text)  # Raw prompt text, unstructured
+    model_name = Column(String(100))  # e.g., 'claude-3-5-sonnet', 'claude-3-haiku'
+    model_version = Column(String(50))  # e.g., '20241022'
+    guideline_version = Column(String(100))  # Reference to PDF version

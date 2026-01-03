@@ -38,7 +38,7 @@ app.include_router(artifacts.router, prefix="/api/v1/artifacts", tags=["artifact
 app.include_router(executions.router, prefix="/api/v1/executions", tags=["executions"])
 app.include_router(verifications.router, prefix="/api/v1/verifications", tags=["verifications"])
 app.include_router(adjudications.router, prefix="/api/v1/adjudications", tags=["adjudications"])
-app.include_router(ingest.router)
+app.include_router(ingest.router, prefix="/api/v1/ingest", tags=["ingest"])
 
 
 @app.get("/")

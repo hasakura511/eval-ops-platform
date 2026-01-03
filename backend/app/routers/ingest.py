@@ -4,7 +4,7 @@ import re
 import uuid
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
@@ -20,10 +20,61 @@ from app.schemas.ingest import (
 )
 from app.services.verifier_engine import VerificationViolation, VerifierEngine
 
-router = APIRouter(prefix="/api/v1/ingest", tags=["ingest"])
+router = APIRouter(tags=["ingest"])
 
 DEFAULT_RUBRIC_PATH = Path(__file__).resolve().parent.parent.parent / "rubrics" / "maps_evaluation.md"
 BANNED_PHRASES = ["guess", "maybe", "probably", "i think"]
+
+# Delimiters that separate eval output from agent prompt
+PROMPT_DELIMITERS = [
+    "then i want it to make changes",
+    "then i want it to MAKE CHANGES",
+    "---AGENT PROMPT---",
+    "===AGENT PROMPT===",
+    "## AGENT PROMPT",
+]
+
+# Prefixes that indicate the input starts with an agent prompt
+PROMPT_PREFIXES = [
+    "i need you to help me evaluate",
+    "I need you to help me evaluate",
+]
+
+
+def _split_eval_and_prompt(raw_text: str) -> Tuple[str, Optional[str]]:
+    """
+    Split input into eval output and agent prompt based on delimiter or prefix.
+
+    Returns:
+        (eval_output, agent_prompt) - agent_prompt is None if no delimiter found
+    """
+    text_lower = raw_text.lower()
+
+    # Check if input starts with a prompt prefix (prompt comes first, then eval output)
+    for prefix in PROMPT_PREFIXES:
+        if text_lower.startswith(prefix.lower()):
+            # Look for where eval output begins (DEBUG INFO section)
+            eval_markers = ["debug info", "DEBUG INFO"]
+            for marker in eval_markers:
+                idx = raw_text.find(marker)
+                if idx != -1:
+                    agent_prompt = raw_text[:idx].strip()
+                    eval_output = raw_text[idx:].strip()
+                    return eval_output, agent_prompt if agent_prompt else None
+            # No eval marker found - treat entire input as prompt
+            return "", raw_text
+
+    # Check for delimiters (eval output comes first, then prompt)
+    for delimiter in PROMPT_DELIMITERS:
+        delimiter_lower = delimiter.lower()
+        idx = text_lower.find(delimiter_lower)
+        if idx != -1:
+            eval_output = raw_text[:idx].strip()
+            agent_prompt = raw_text[idx + len(delimiter):].strip()
+            return eval_output, agent_prompt if agent_prompt else None
+
+    # No delimiter found - entire input is eval output (backward compatible)
+    return raw_text, None
 
 
 def _extract_sections(raw_text: str) -> Dict[str, str]:
@@ -212,24 +263,37 @@ def ingest_output(payload: IngestRequest, db: Session = Depends(get_db)):
     if not raw_text:
         raise HTTPException(status_code=400, detail="raw_text cannot be empty")
 
-    sections = _extract_sections(raw_text)
+    # Determine agent_prompt: use explicit field or try delimiter detection
+    agent_prompt = payload.agent_prompt
+    eval_text = raw_text
+
+    if agent_prompt is None:
+        # Try to split based on delimiter
+        eval_text, detected_prompt = _split_eval_and_prompt(raw_text)
+        agent_prompt = detected_prompt
+
+    sections = _extract_sections(eval_text)
     parsed_payload = ParsedPayload(
         debug_info=_parse_debug_info(sections.get("debug info", "")),
         ratings_table=_parse_ratings_table(sections.get("ratings table", "")),
         errors=_parse_errors(sections.get("errors", "")),
-        artifact_refs=_extract_artifact_refs(raw_text),
+        artifact_refs=_extract_artifact_refs(eval_text),
     )
 
     patch_preview, patch_data = _generate_rubric_patch(parsed_payload.errors, DEFAULT_RUBRIC_PATH)
-    verifier_results = _run_verifiers(raw_text, parsed_payload.artifact_refs)
+    verifier_results = _run_verifiers(eval_text, parsed_payload.artifact_refs)
 
     submission = Submission(
-        raw_text=raw_text,
+        raw_text=eval_text,
         parsed_json=json.loads(parsed_payload.model_dump_json()),
         artifact_refs=[uuid.UUID(ref) for ref in parsed_payload.artifact_refs],
         patch_preview=patch_preview,
         patch_data=patch_data,
         verifier_results=verifier_results,
+        agent_prompt=agent_prompt,
+        model_name=payload.model_name,
+        model_version=payload.model_version,
+        guideline_version=payload.guideline_version,
     )
 
     db.add(submission)
@@ -241,6 +305,10 @@ def ingest_output(payload: IngestRequest, db: Session = Depends(get_db)):
         parsed=parsed_payload,
         patch_preview=patch_preview,
         verifier_violations=[result for result in verifier_results if not result["passed"]],
+        agent_prompt=agent_prompt,
+        model_name=payload.model_name,
+        model_version=payload.model_version,
+        guideline_version=payload.guideline_version,
     )
 
 

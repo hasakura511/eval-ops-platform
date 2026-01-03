@@ -9,18 +9,56 @@
     .section { margin-top: 20px; padding: 15px; background: #fff; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
     pre { background: #111; color: #0f0; padding: 10px; overflow-x: auto; }
     .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
     button { padding: 10px 16px; border: none; background: #2563eb; color: #fff; border-radius: 4px; cursor: pointer; }
     button:disabled { background: #cbd5e1; cursor: not-allowed; }
     table { width: 100%; border-collapse: collapse; }
     th, td { border: 1px solid #e2e8f0; padding: 8px; text-align: left; }
     th { background: #f1f5f9; }
     .error { color: #b91c1c; }
+    label { display: block; margin-bottom: 5px; font-weight: 600; color: #374151; }
+    select, input[type="text"] { width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 14px; }
+    .form-group { margin-bottom: 15px; }
+    .prompt-display { background: #1e293b; color: #94a3b8; padding: 10px; white-space: pre-wrap; max-height: 200px; overflow-y: auto; }
+    .meta-info { display: flex; gap: 20px; margin-top: 10px; font-size: 13px; color: #64748b; }
+    .meta-info span { background: #f1f5f9; padding: 4px 8px; border-radius: 4px; }
   </style>
 </head>
 <body>
   <h1>Haiku Evaluation Ingestion</h1>
+
   <div class="section">
-    <textarea id="rawText" placeholder="Paste Haiku evaluation output here..."></textarea>
+    <div class="form-group">
+      <label for="rawText">Evaluation Output (DEBUG INFO, Ratings Table, Errors)</label>
+      <textarea id="rawText" placeholder="Paste Haiku evaluation output here..."></textarea>
+    </div>
+
+    <div class="form-group">
+      <label for="agentPrompt">Agent Prompt (optional)</label>
+      <textarea id="agentPrompt" placeholder="Paste the full agent prompt used for this evaluation..." style="height: 120px;"></textarea>
+    </div>
+
+    <div class="grid-3">
+      <div class="form-group">
+        <label for="modelName">Model</label>
+        <select id="modelName">
+          <option value="unknown">Select Model...</option>
+          <option value="claude-3-5-sonnet">Claude 3.5 Sonnet</option>
+          <option value="claude-3-haiku">Claude 3 Haiku</option>
+          <option value="claude-3-opus">Claude 3 Opus</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="modelVersion">Model Version</label>
+        <input type="text" id="modelVersion" placeholder="e.g., 20241022">
+      </div>
+      <div class="form-group">
+        <label for="guidelineVersion">Guideline Version (optional)</label>
+        <input type="text" id="guidelineVersion" placeholder="e.g., v2.1">
+      </div>
+    </div>
+
     <div style="margin-top: 10px;">
       <button onclick="ingest()">Ingest</button>
       <button id="applyBtn" onclick="applyPatch()" disabled>Apply Patch</button>
@@ -58,6 +96,12 @@
     <pre id="patchPreview">—</pre>
   </div>
 
+  <div class="section" id="promptSection" style="display: none;">
+    <h3>Stored Agent Prompt</h3>
+    <div class="meta-info" id="metaInfo"></div>
+    <pre id="storedPrompt" class="prompt-display">—</pre>
+  </div>
+
   <script>
     let submissionId = null;
 
@@ -73,11 +117,22 @@
       submissionId = null;
 
       const rawText = document.getElementById('rawText').value;
+      const agentPrompt = document.getElementById('agentPrompt').value.trim() || null;
+      const modelName = document.getElementById('modelName').value;
+      const modelVersion = document.getElementById('modelVersion').value.trim() || null;
+      const guidelineVersion = document.getElementById('guidelineVersion').value.trim() || null;
+
       try {
         const res = await fetch('/api/v1/ingest', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ raw_text: rawText })
+          body: JSON.stringify({
+            raw_text: rawText,
+            agent_prompt: agentPrompt,
+            model_name: modelName,
+            model_version: modelVersion,
+            guideline_version: guidelineVersion
+          })
         });
         if (!res.ok) {
           const err = await res.json();
@@ -92,6 +147,28 @@
         document.getElementById('patchPreview').textContent = data.patch_preview || 'No patch generated';
         document.getElementById('violations').textContent = JSON.stringify(data.verifier_violations, null, 2);
         document.getElementById('applyBtn').disabled = !data.patch_preview;
+
+        // Display stored prompt and metadata
+        const promptSection = document.getElementById('promptSection');
+        if (data.agent_prompt) {
+          promptSection.style.display = 'block';
+          document.getElementById('storedPrompt').textContent = data.agent_prompt;
+
+          const metaInfo = document.getElementById('metaInfo');
+          metaInfo.innerHTML = '';
+          if (data.model_name && data.model_name !== 'unknown') {
+            metaInfo.innerHTML += `<span>Model: ${data.model_name}</span>`;
+          }
+          if (data.model_version) {
+            metaInfo.innerHTML += `<span>Version: ${data.model_version}</span>`;
+          }
+          if (data.guideline_version) {
+            metaInfo.innerHTML += `<span>Guideline: ${data.guideline_version}</span>`;
+          }
+        } else {
+          promptSection.style.display = 'none';
+        }
+
         setStatus('Ingestion complete');
       } catch (e) {
         setStatus(e.message, true);
