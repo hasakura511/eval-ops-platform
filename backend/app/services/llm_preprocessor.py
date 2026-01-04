@@ -263,6 +263,29 @@ def apply_patch_to_prompt(
     Returns:
         Dict with updated_prompt, new_version, changelog, verification_notes
     """
+    def _fallback_result(reason: str) -> Dict[str, Any]:
+        """Return a safe, deterministic patch result when the LLM fails."""
+        fallback_version = _increment_version(current_version or "v1.0")
+        suggestions = patch_suggestions.strip()
+        updated_prompt = current_prompt.rstrip()
+        if suggestions:
+            updated_prompt = f"{updated_prompt}\n\n# Patch suggestions applied (fallback)\n{suggestions}".strip()
+
+        logger.warning(f"LLM patching unavailable, using fallback: {reason}")
+        return {
+            "updated_prompt": updated_prompt,
+            "new_version": fallback_version,
+            "changelog": [
+                {
+                    "action": "Add",
+                    "location": "Fallback",
+                    "description": f"Applied suggestions without LLM: {reason}"
+                }
+            ],
+            "verification_notes": f"LLM unavailable: {reason}. Applied suggestions without model assistance.",
+            "verified": False,
+        }
+
     if not current_version:
         current_version = "v1.0"
 
@@ -289,29 +312,34 @@ def apply_patch_to_prompt(
             timeout=120
         )
         response.raise_for_status()
+    except requests.exceptions.RequestException as e:
+        return _fallback_result(str(e))
 
+    try:
         result = response.json()
-        raw_response = result.get("response", "{}")
-        cleaned = clean_llm_response(raw_response)
+    except ValueError as e:
+        return _fallback_result(f"Non-JSON response: {e}")
 
+    raw_response = result.get("response", "{}")
+    cleaned = clean_llm_response(raw_response)
+
+    try:
         parsed = json.loads(cleaned)
-        logger.info("Successfully applied patch to prompt")
+    except json.JSONDecodeError as e:
+        return _fallback_result(f"Malformed LLM JSON: {e}")
 
-        # Ensure required keys exist
-        if "updated_prompt" not in parsed:
-            raise ValueError("LLM response missing 'updated_prompt'")
-        if "new_version" not in parsed:
-            parsed["new_version"] = _increment_version(current_version)
-        if "changelog" not in parsed:
-            parsed["changelog"] = []
-        if "verification_notes" not in parsed:
-            parsed["verification_notes"] = "Changes applied"
+    if not isinstance(parsed, dict) or "updated_prompt" not in parsed:
+        return _fallback_result("LLM response missing 'updated_prompt'")
 
-        return parsed
+    logger.info("Successfully applied patch to prompt")
 
-    except Exception as e:
-        logger.error(f"Failed to apply patch: {e}")
-        raise
+    # Ensure required keys exist
+    parsed.setdefault("new_version", _increment_version(current_version))
+    parsed.setdefault("changelog", [])
+    parsed.setdefault("verification_notes", "Changes applied")
+    parsed.setdefault("verified", True)
+
+    return parsed
 
 
 def _increment_version(version: str) -> str:

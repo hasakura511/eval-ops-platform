@@ -476,7 +476,7 @@ def apply_patch_to_prompt_endpoint(payload: ApplyPatchToPromptRequest):
             updated_prompt=result["updated_prompt"],
             new_version=result["new_version"],
             changelog=changelog_entries,
-            verified=True,
+            verified=result.get("verified", True),
             verification_notes=result.get("verification_notes", "Changes applied")
         )
 
