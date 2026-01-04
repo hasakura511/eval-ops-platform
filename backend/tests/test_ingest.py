@@ -10,6 +10,7 @@ import requests
 from app.services.llm_preprocessor import (
     clean_llm_response,
     preprocess_with_llm,
+    apply_patch_to_prompt,
 )
 
 
@@ -259,6 +260,37 @@ class TestIngestEndpoint:
         )
 
         assert resp.status_code == 400
+
+
+class TestApplyPatchToPrompt:
+    """Unit tests for prompt patching helper."""
+
+    def test_fallback_when_llm_response_invalid(self, monkeypatch):
+        """LLM failures should return a deterministic fallback patch."""
+
+        def fake_post(*args, **kwargs):
+            class DummyResponse:
+                def raise_for_status(self):
+                    return None
+
+                def json(self):
+                    # Missing JSON object to force fallback
+                    return {"response": "not-json"}
+
+            return DummyResponse()
+
+        monkeypatch.setattr("app.services.llm_preprocessor.requests.post", fake_post)
+
+        result = apply_patch_to_prompt(
+            current_prompt="Current prompt text",
+            patch_suggestions="- Add new safety check",
+            current_version="v1.0",
+        )
+
+        assert result["verified"] is False
+        assert result["new_version"] == "v1.1"
+        assert "- Add new safety check" in result["updated_prompt"]
+        assert any(entry.get("location") == "Fallback" for entry in result.get("changelog", []))
 
 
 if __name__ == "__main__":
