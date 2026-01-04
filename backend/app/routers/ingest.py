@@ -15,12 +15,15 @@ from app.core.database import get_db
 from app.models.submission import Submission
 from app.schemas.ingest import (
     ApplyPatchResponse,
+    ApplyPatchToPromptRequest,
+    ApplyPatchToPromptResponse,
+    ChangeLogEntry,
     IngestRequest,
     IngestResponse,
     ParsedError,
     ParsedPayload,
 )
-from app.services.llm_preprocessor import preprocess_with_llm, preprocess_with_haiku
+from app.services.llm_preprocessor import preprocess_with_llm, preprocess_with_haiku, apply_patch_to_prompt
 from app.services.verifier_engine import VerificationViolation, VerifierEngine
 
 logger = logging.getLogger(__name__)
@@ -436,3 +439,47 @@ def apply_patch(submission_id: str, db: Session = Depends(get_db)):
         applied_at=submission.patch_applied_at,
         already_applied=not changed,
     )
+
+
+@router.post("/apply-to-prompt", response_model=ApplyPatchToPromptResponse)
+def apply_patch_to_prompt_endpoint(payload: ApplyPatchToPromptRequest):
+    """
+    Apply patch suggestions to an agent prompt using LLM.
+
+    Takes the current prompt and patch suggestions, uses LLM to apply changes,
+    and returns the updated prompt with version and changelog.
+    """
+    if not payload.current_prompt.strip():
+        raise HTTPException(status_code=400, detail="current_prompt cannot be empty")
+    if not payload.patch_suggestions.strip():
+        raise HTTPException(status_code=400, detail="patch_suggestions cannot be empty")
+
+    try:
+        result = apply_patch_to_prompt(
+            current_prompt=payload.current_prompt,
+            patch_suggestions=payload.patch_suggestions,
+            current_version=payload.current_version
+        )
+
+        # Convert changelog to ChangeLogEntry objects
+        changelog_entries = []
+        for entry in result.get("changelog", []):
+            if isinstance(entry, dict):
+                changelog_entries.append(ChangeLogEntry(
+                    action=entry.get("action", "Add"),
+                    location=entry.get("location", "Unknown"),
+                    description=entry.get("description", "")
+                ))
+
+        return ApplyPatchToPromptResponse(
+            ok=True,
+            updated_prompt=result["updated_prompt"],
+            new_version=result["new_version"],
+            changelog=changelog_entries,
+            verified=True,
+            verification_notes=result.get("verification_notes", "Changes applied")
+        )
+
+    except Exception as e:
+        logger.error(f"Failed to apply patch to prompt: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to apply patch: {str(e)}")

@@ -50,3 +50,24 @@ class ApplyPatchResponse(BaseModel):
     rubric_path: str
     applied_at: datetime
     already_applied: bool = False
+
+
+class ApplyPatchToPromptRequest(BaseModel):
+    current_prompt: str = Field(..., description="Current agent prompt text")
+    patch_suggestions: str = Field(..., description="Patch suggestions to apply")
+    current_version: Optional[str] = Field(default=None, description="Current version (e.g., 'v1.2')")
+
+
+class ChangeLogEntry(BaseModel):
+    action: str = Field(..., description="Action taken: Add, Replace, Remove")
+    location: str = Field(..., description="Where the change was made (e.g., '§6.6.5')")
+    description: str = Field(..., description="What was changed")
+
+
+class ApplyPatchToPromptResponse(BaseModel):
+    ok: bool
+    updated_prompt: str = Field(..., description="The updated agent prompt with changes applied")
+    new_version: str = Field(..., description="New version number (e.g., 'v1.3')")
+    changelog: List[ChangeLogEntry] = Field(default_factory=list, description="List of changes made")
+    verified: bool = Field(default=False, description="Whether the changes were verified by LLM")
+    verification_notes: Optional[str] = Field(default=None, description="Notes from verification")

@@ -2,13 +2,12 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Haiku Output Ingestion</title>
+  <title>Eval Output Ingestion</title>
   <style>
-    body { font-family: Arial, sans-serif; margin: 20px; background: #f7f7f7; }
+    body { font-family: Arial, sans-serif; margin: 20px; background: #f7f7f7; max-width: 1200px; margin: 0 auto; padding: 20px; }
     textarea { width: 100%; height: 200px; }
     .section { margin-top: 20px; padding: 15px; background: #fff; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-    pre { background: #111; color: #0f0; padding: 10px; overflow-x: auto; }
-    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    pre { background: #111; color: #0f0; padding: 10px; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word; }
     .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
     button { padding: 10px 16px; border: none; background: #2563eb; color: #fff; border-radius: 4px; cursor: pointer; }
     button:disabled { background: #cbd5e1; cursor: not-allowed; }
@@ -19,13 +18,128 @@
     label { display: block; margin-bottom: 5px; font-weight: 600; color: #374151; }
     select, input[type="text"] { width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 14px; }
     .form-group { margin-bottom: 15px; }
-    .prompt-display { background: #1e293b; color: #94a3b8; padding: 10px; white-space: pre-wrap; max-height: 200px; overflow-y: auto; }
     .meta-info { display: flex; gap: 20px; margin-top: 10px; font-size: 13px; color: #64748b; }
     .meta-info span { background: #f1f5f9; padding: 4px 8px; border-radius: 4px; }
+
+    /* Log panel styles */
+    #logPanel {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 12px;
+      font-family: 'Monaco', 'Menlo', monospace;
+      font-size: 12px;
+      max-height: 150px;
+      overflow-y: auto;
+      border-radius: 4px;
+    }
+    .log-entry { margin: 2px 0; }
+    .log-time { color: #6a9955; }
+    .log-info { color: #4fc1ff; }
+    .log-success { color: #4ec9b0; }
+    .log-error { color: #f14c4c; }
+    .log-warn { color: #cca700; }
+    .spinner { display: inline-block; margin-left: 8px; }
+    .spinner::after {
+      content: '';
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      border: 2px solid #fff;
+      border-top-color: transparent;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .elapsed { color: #888; font-size: 12px; margin-left: 10px; }
+
+    /* Copy block styles */
+    .copy-block {
+      background: #0d1117;
+      color: #c9d1d9;
+      padding: 15px;
+      font-family: 'Monaco', 'Menlo', monospace;
+      font-size: 12px;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      border-radius: 6px;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+    .copy-btn {
+      background: #238636;
+      margin-right: 10px;
+    }
+    .copy-btn:hover { background: #2ea043; }
+    .copy-btn.copied { background: #1f6feb; }
+
+    /* Editable patch preview */
+    .editable-pre {
+      background: #111;
+      color: #0f0;
+      padding: 10px;
+      font-family: 'Monaco', 'Menlo', monospace;
+      font-size: 13px;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      border-radius: 4px;
+      min-height: 100px;
+      border: 1px solid #333;
+    }
+    .editable-pre:focus {
+      outline: 2px solid #2563eb;
+      border-color: #2563eb;
+    }
+
+    /* Changelog styles */
+    .changelog {
+      background: #1e293b;
+      color: #94a3b8;
+      padding: 12px;
+      border-radius: 4px;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+    .changelog-entry {
+      padding: 6px 0;
+      border-bottom: 1px solid #334155;
+    }
+    .changelog-entry:last-child { border-bottom: none; }
+    .changelog-action {
+      display: inline-block;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-size: 11px;
+      font-weight: 600;
+      margin-right: 8px;
+    }
+    .changelog-action.add { background: #166534; color: #86efac; }
+    .changelog-action.replace { background: #854d0e; color: #fde047; }
+    .changelog-action.remove { background: #991b1b; color: #fca5a5; }
+    .changelog-location { color: #60a5fa; }
+
+    /* Version badge */
+    .version-badge {
+      display: inline-block;
+      background: #4f46e5;
+      color: white;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      margin-left: 10px;
+    }
+    .version-info {
+      font-size: 12px;
+      color: #6b7280;
+      margin-left: 10px;
+    }
+
+    h3 { margin-top: 0; color: #374151; border-bottom: 1px solid #e5e7eb; padding-bottom: 8px; }
+    .section-desc { font-size: 12px; color: #6b7280; margin-bottom: 10px; }
+    .btn-row { margin-top: 10px; display: flex; gap: 10px; align-items: center; }
   </style>
 </head>
 <body>
-  <h1>Haiku Evaluation Ingestion</h1>
+  <h1>Eval Output Ingestion</h1>
 
   <div class="section">
     <div class="form-group">
@@ -34,7 +148,11 @@
     </div>
 
     <div class="form-group">
-      <label for="agentPrompt">Agent Prompt (optional)</label>
+      <label for="agentPrompt">
+        Agent Prompt
+        <span id="versionBadge" class="version-badge" style="display: none;">v1.0</span>
+        <span id="versionInfo" class="version-info"></span>
+      </label>
       <textarea id="agentPrompt" placeholder="Paste the full agent prompt used for this evaluation..." style="height: 120px;"></textarea>
     </div>
 
@@ -60,50 +178,139 @@
     </div>
 
     <div style="margin-top: 10px;">
-      <button onclick="ingest()">Ingest</button>
-      <button id="applyBtn" onclick="applyPatch()" disabled>Apply Patch</button>
+      <button id="ingestBtn" onclick="ingest()">Ingest</button>
       <span id="status"></span>
+      <span id="elapsed" class="elapsed"></span>
     </div>
   </div>
 
-  <div class="grid">
-    <div class="section">
-      <h3>Debug Info</h3>
-      <pre id="debugInfo">—</pre>
-    </div>
-    <div class="section">
-      <h3>Ratings</h3>
-      <table id="ratingsTable">
-        <thead><tr><th>Field</th><th>Answer</th><th>Details</th></tr></thead>
-        <tbody></tbody>
-      </table>
-    </div>
-  </div>
-
-  <div class="grid">
-    <div class="section">
-      <h3>Errors</h3>
-      <pre id="errors">—</pre>
-    </div>
-    <div class="section">
-      <h3>Verifier Violations</h3>
-      <pre id="violations">—</pre>
+  <!-- Log Panel -->
+  <div class="section">
+    <h3>Activity Log</h3>
+    <div id="logPanel">
+      <div class="log-entry"><span class="log-info">Ready. Paste evaluation output and click Ingest.</span></div>
     </div>
   </div>
 
   <div class="section">
-    <h3>Patch Preview</h3>
-    <pre id="patchPreview">—</pre>
+    <h3>Debug Info</h3>
+    <p class="section-desc">Extracted metadata from the evaluation (query, result, distances, etc.)</p>
+    <pre id="debugInfo">—</pre>
   </div>
 
-  <div class="section" id="promptSection" style="display: none;">
-    <h3>Stored Agent Prompt</h3>
-    <div class="meta-info" id="metaInfo"></div>
-    <pre id="storedPrompt" class="prompt-display">—</pre>
+  <div class="section">
+    <h3>Ratings Table</h3>
+    <p class="section-desc">Field-by-field evaluation scores and justifications</p>
+    <table id="ratingsTable">
+      <thead><tr><th>Field</th><th>Answer</th><th>Details</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <div class="section">
+    <h3>Errors (Corrections)</h3>
+    <p class="section-desc">Identified mistakes in the original evaluation that need correction</p>
+    <pre id="errors">—</pre>
+  </div>
+
+  <div class="section">
+    <h3>Verifier Violations</h3>
+    <p class="section-desc">Quality checks: banned phrases ("guess", "maybe"), missing references, vague observations</p>
+    <pre id="violations">—</pre>
+  </div>
+
+  <div class="section">
+    <h3>Patch Preview</h3>
+    <p class="section-desc">Suggested changes to apply to the agent prompt. Edit if needed, then click Apply Patch.</p>
+    <div id="patchPreview" class="editable-pre" contenteditable="true">—</div>
+    <div class="btn-row">
+      <button id="applyBtn" onclick="applyPatchToPrompt()" disabled>Apply Patch to Prompt</button>
+      <span id="patchStatus" style="font-size: 13px; color: #6b7280;"></span>
+    </div>
+  </div>
+
+  <!-- Changelog Section -->
+  <div class="section" id="changelogSection" style="display: none;">
+    <h3>📜 Prompt Changelog</h3>
+    <p class="section-desc">History of changes applied to the agent prompt</p>
+    <div id="changelog" class="changelog"></div>
+  </div>
+
+  <!-- LLM-Friendly Copy Block -->
+  <div class="section" id="copySection" style="display: none;">
+    <h3>📋 LLM-Friendly Summary (Copy for Opus)</h3>
+    <p class="section-desc">Structured markdown summary for continuing analysis with Claude</p>
+    <button class="copy-btn" onclick="copyLLMSummary()">Copy Summary</button>
+    <button class="copy-btn" onclick="copyRawJSON()" style="background: #6366f1;">Copy Raw JSON</button>
+    <div id="copyBlock" class="copy-block"></div>
   </div>
 
   <script>
     let submissionId = null;
+    let startTime = null;
+    let timerInterval = null;
+    let lastData = null;
+    let promptVersion = null;
+    let changelogHistory = [];
+
+    // Load saved data on page load
+    document.addEventListener('DOMContentLoaded', () => {
+      const savedPrompt = localStorage.getItem('lastAgentPrompt');
+      if (savedPrompt) {
+        document.getElementById('agentPrompt').value = savedPrompt;
+      }
+      const savedModel = localStorage.getItem('lastModelName');
+      if (savedModel) {
+        document.getElementById('modelName').value = savedModel;
+      }
+      const savedVersion = localStorage.getItem('lastModelVersion');
+      if (savedVersion) {
+        document.getElementById('modelVersion').value = savedVersion;
+      }
+      // Load prompt version
+      promptVersion = localStorage.getItem('promptVersion') || null;
+      const lastUpdated = localStorage.getItem('promptLastUpdated') || null;
+      updateVersionDisplay(promptVersion, lastUpdated);
+
+      // Load changelog history
+      const savedChangelog = localStorage.getItem('changelogHistory');
+      if (savedChangelog) {
+        try {
+          changelogHistory = JSON.parse(savedChangelog);
+          renderChangelog();
+        } catch (e) {}
+      }
+    });
+
+    function updateVersionDisplay(version, lastUpdated) {
+      const badge = document.getElementById('versionBadge');
+      const info = document.getElementById('versionInfo');
+
+      if (version) {
+        badge.textContent = version;
+        badge.style.display = 'inline-block';
+        if (lastUpdated) {
+          info.textContent = `(last updated: ${lastUpdated})`;
+        }
+      } else {
+        badge.style.display = 'none';
+        info.textContent = '(no version - will start at v1.0)';
+      }
+    }
+
+    function log(message, type = 'info') {
+      const panel = document.getElementById('logPanel');
+      const entry = document.createElement('div');
+      entry.className = 'log-entry';
+      const time = new Date().toLocaleTimeString();
+      entry.innerHTML = `<span class="log-time">[${time}]</span> <span class="log-${type}">${message}</span>`;
+      panel.appendChild(entry);
+      panel.scrollTop = panel.scrollHeight;
+    }
+
+    function clearLog() {
+      document.getElementById('logPanel').innerHTML = '';
+    }
 
     function setStatus(msg, isError = false) {
       const status = document.getElementById('status');
@@ -111,9 +318,150 @@
       status.className = isError ? 'error' : '';
     }
 
+    function startTimer() {
+      startTime = Date.now();
+      const elapsed = document.getElementById('elapsed');
+      timerInterval = setInterval(() => {
+        const secs = ((Date.now() - startTime) / 1000).toFixed(1);
+        elapsed.textContent = `(${secs}s)`;
+      }, 100);
+    }
+
+    function stopTimer() {
+      if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+      }
+      const secs = startTime ? ((Date.now() - startTime) / 1000).toFixed(1) : '0';
+      document.getElementById('elapsed').textContent = `(${secs}s)`;
+    }
+
+    function generateLLMSummary(data) {
+      const debug = data.parsed.debug_info;
+      const ratings = data.parsed.ratings_table || [];
+      const errors = data.parsed.errors || [];
+      const violations = data.verifier_violations || [];
+
+      let summary = `## Evaluation Summary
+
+### Query & Result
+- **Query:** ${debug.query || 'N/A'}
+- **Result:** ${debug.result_being_evaluated || 'N/A'}
+- **Address:** ${debug.result_address || 'N/A'}
+- **Classification:** ${debug.classification || 'N/A'}
+- **Result Type:** ${debug.result_type || 'N/A'}
+- **Distance to User:** ${debug.distance_to_user_m ? debug.distance_to_user_m + 'm' : 'N/A'}
+- **Distance to Viewport:** ${debug.distance_to_viewport_m ? debug.distance_to_viewport_m + 'm' : 'N/A'}
+- **Viewport Status:** ${debug.viewport_status || 'N/A'}
+
+### Ratings
+`;
+      if (ratings.length > 0) {
+        ratings.forEach(r => {
+          summary += `- **${r.field}:** ${r.answer} — ${r.details}\n`;
+        });
+      } else {
+        summary += `(No ratings extracted)\n`;
+      }
+
+      summary += `\n### Errors/Corrections\n`;
+      if (errors.length > 0) {
+        errors.forEach((e, i) => {
+          summary += `${i + 1}. **${e.field || 'Unknown'}:** ${e.from || e.from_value || '?'} → ${e.to || e.to_value || '?'}\n`;
+          if (e.rationale_text) {
+            summary += `   Rationale: ${e.rationale_text}\n`;
+          }
+        });
+      } else {
+        summary += `(No corrections needed)\n`;
+      }
+
+      if (violations.length > 0) {
+        summary += `\n### Quality Issues\n`;
+        violations.forEach(v => {
+          summary += `- **${v.verifier}:** ${JSON.stringify(v.violations)}\n`;
+        });
+      }
+
+      summary += `\n### Metadata
+- **Submission ID:** ${data.submission_id}
+- **Model:** ${data.model_name || 'unknown'}${data.model_version ? ' v' + data.model_version : ''}
+- **Guideline Version:** ${data.guideline_version || 'N/A'}
+`;
+
+      if (data.agent_prompt) {
+        summary += `\n### Agent Prompt Used\n\`\`\`\n${data.agent_prompt}\n\`\`\`\n`;
+      }
+
+      return summary;
+    }
+
+    function copyLLMSummary() {
+      const copyBlock = document.getElementById('copyBlock');
+      navigator.clipboard.writeText(copyBlock.textContent).then(() => {
+        showCopied(0);
+      });
+    }
+
+    function copyRawJSON() {
+      if (lastData) {
+        navigator.clipboard.writeText(JSON.stringify(lastData, null, 2)).then(() => {
+          showCopied(1);
+        });
+      }
+    }
+
+    function showCopied(btnIndex) {
+      const btns = document.querySelectorAll('.copy-btn');
+      const btn = btns[btnIndex];
+      const originalText = btn.textContent;
+      btn.textContent = 'Copied!';
+      btn.classList.add('copied');
+      setTimeout(() => {
+        btn.textContent = originalText;
+        btn.classList.remove('copied');
+      }, 2000);
+    }
+
+    function renderChangelog() {
+      const container = document.getElementById('changelog');
+      const section = document.getElementById('changelogSection');
+
+      if (changelogHistory.length === 0) {
+        section.style.display = 'none';
+        return;
+      }
+
+      section.style.display = 'block';
+      container.innerHTML = '';
+
+      changelogHistory.forEach(entry => {
+        const div = document.createElement('div');
+        div.className = 'changelog-entry';
+
+        const actionClass = entry.action.toLowerCase();
+        div.innerHTML = `
+          <span class="changelog-action ${actionClass}">${entry.action}</span>
+          <span class="changelog-location">${entry.location}</span>
+          — ${entry.description}
+          <span style="float: right; font-size: 11px; color: #64748b;">${entry.timestamp || ''}</span>
+        `;
+        container.appendChild(div);
+      });
+    }
+
     async function ingest() {
-      setStatus('Submitting...');
+      clearLog();
+      log('Starting ingestion...', 'info');
+
+      const ingestBtn = document.getElementById('ingestBtn');
+      ingestBtn.disabled = true;
+      ingestBtn.innerHTML = 'Processing<span class="spinner"></span>';
+
+      setStatus('');
       document.getElementById('applyBtn').disabled = true;
+      document.getElementById('patchStatus').textContent = '';
+      document.getElementById('copySection').style.display = 'none';
       submissionId = null;
 
       const rawText = document.getElementById('rawText').value;
@@ -122,8 +470,35 @@
       const modelVersion = document.getElementById('modelVersion').value.trim() || null;
       const guidelineVersion = document.getElementById('guidelineVersion').value.trim() || null;
 
+      // Save to localStorage only if not empty
+      if (agentPrompt) {
+        localStorage.setItem('lastAgentPrompt', agentPrompt);
+      }
+      if (modelName && modelName !== 'unknown') {
+        localStorage.setItem('lastModelName', modelName);
+      }
+      if (modelVersion) {
+        localStorage.setItem('lastModelVersion', modelVersion);
+      }
+
+      if (!rawText.trim()) {
+        log('Error: No evaluation text provided', 'error');
+        setStatus('Please enter evaluation output', true);
+        ingestBtn.disabled = false;
+        ingestBtn.textContent = 'Ingest';
+        return;
+      }
+
+      log(`Input: ${rawText.length} characters`, 'info');
+      if (agentPrompt) log(`Agent prompt: ${agentPrompt.length} characters`, 'info');
+      log(`Model: ${modelName}${modelVersion ? ' v' + modelVersion : ''}`, 'info');
+
+      startTimer();
+      log('Sending to backend...', 'info');
+      log('Waiting for LLM processing (Ollama qwen2.5:14b)...', 'warn');
+
       try {
-        const res = await fetch('/api/v1/ingest', {
+        const res = await fetch('/api/v1/ingest/', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -134,65 +509,158 @@
             guideline_version: guidelineVersion
           })
         });
+
+        stopTimer();
+
         if (!res.ok) {
           const err = await res.json();
+          log(`Error: ${err.detail || 'Request failed'}`, 'error');
           setStatus(err.detail || 'Ingest failed', true);
+          ingestBtn.disabled = false;
+          ingestBtn.textContent = 'Ingest';
           return;
         }
+
+        log('Response received, parsing...', 'info');
         const data = await res.json();
+        lastData = data;
+
         submissionId = data.submission_id;
+        log(`Submission ID: ${submissionId}`, 'success');
+
+        // Log what was extracted
+        const debugInfo = data.parsed.debug_info;
+        if (debugInfo.query) log(`Query: "${debugInfo.query}"`, 'info');
+        if (debugInfo.result_being_evaluated) log(`Result: ${debugInfo.result_being_evaluated}`, 'info');
+
+        const ratingsCount = data.parsed.ratings_table?.length || 0;
+        const errorsCount = data.parsed.errors?.length || 0;
+        log(`Parsed: ${ratingsCount} ratings, ${errorsCount} errors`, 'success');
+
+        if (data.verifier_violations?.length > 0) {
+          log(`Verifier violations: ${data.verifier_violations.length}`, 'warn');
+        }
+
+        if (data.patch_preview) {
+          log('Patch preview generated', 'success');
+        }
+
+        // Update UI
         document.getElementById('debugInfo').textContent = JSON.stringify(data.parsed.debug_info, null, 2);
         renderRatings(data.parsed.ratings_table);
         document.getElementById('errors').textContent = JSON.stringify(data.parsed.errors, null, 2);
         document.getElementById('patchPreview').textContent = data.patch_preview || 'No patch generated';
         document.getElementById('violations').textContent = JSON.stringify(data.verifier_violations, null, 2);
-        document.getElementById('applyBtn').disabled = !data.patch_preview;
 
-        // Display stored prompt and metadata
-        const promptSection = document.getElementById('promptSection');
-        if (data.agent_prompt) {
-          promptSection.style.display = 'block';
-          document.getElementById('storedPrompt').textContent = data.agent_prompt;
+        // Enable apply button only if there's a prompt and patch
+        const hasPrompt = agentPrompt && agentPrompt.trim().length > 0;
+        const hasPatch = data.patch_preview && data.patch_preview.trim().length > 0;
+        document.getElementById('applyBtn').disabled = !(hasPrompt && hasPatch);
 
-          const metaInfo = document.getElementById('metaInfo');
-          metaInfo.innerHTML = '';
-          if (data.model_name && data.model_name !== 'unknown') {
-            metaInfo.innerHTML += `<span>Model: ${data.model_name}</span>`;
-          }
-          if (data.model_version) {
-            metaInfo.innerHTML += `<span>Version: ${data.model_version}</span>`;
-          }
-          if (data.guideline_version) {
-            metaInfo.innerHTML += `<span>Guideline: ${data.guideline_version}</span>`;
-          }
-        } else {
-          promptSection.style.display = 'none';
-        }
+        // Generate LLM-friendly copy block
+        const copySection = document.getElementById('copySection');
+        const copyBlock = document.getElementById('copyBlock');
+        copyBlock.textContent = generateLLMSummary(data);
+        copySection.style.display = 'block';
 
+        log('Ingestion complete!', 'success');
         setStatus('Ingestion complete');
+
       } catch (e) {
+        stopTimer();
+        log(`Network error: ${e.message}`, 'error');
         setStatus(e.message, true);
       }
+
+      ingestBtn.disabled = false;
+      ingestBtn.textContent = 'Ingest';
     }
 
-    async function applyPatch() {
-      if (!submissionId) {
-        setStatus('No submission to apply', true);
+    async function applyPatchToPrompt() {
+      const currentPrompt = document.getElementById('agentPrompt').value.trim();
+      const patchSuggestions = document.getElementById('patchPreview').textContent.trim();
+
+      if (!currentPrompt) {
+        log('No agent prompt to patch', 'error');
+        document.getElementById('patchStatus').textContent = 'Error: No agent prompt';
         return;
       }
-      setStatus('Applying patch...');
+
+      if (!patchSuggestions || patchSuggestions === '—' || patchSuggestions === 'No patch generated') {
+        log('No patch suggestions to apply', 'error');
+        document.getElementById('patchStatus').textContent = 'Error: No patch suggestions';
+        return;
+      }
+
+      const applyBtn = document.getElementById('applyBtn');
+      applyBtn.disabled = true;
+      applyBtn.innerHTML = 'Applying<span class="spinner"></span>';
+      document.getElementById('patchStatus').textContent = 'Calling LLM to apply patch...';
+
+      log('Applying patch to agent prompt...', 'info');
+      log(`Current version: ${promptVersion || 'v1.0'}`, 'info');
+
       try {
-        const res = await fetch(`/api/v1/ingest/${submissionId}/apply`, { method: 'POST' });
+        const res = await fetch('/api/v1/ingest/apply-to-prompt', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            current_prompt: currentPrompt,
+            patch_suggestions: patchSuggestions,
+            current_version: promptVersion
+          })
+        });
+
         if (!res.ok) {
           const err = await res.json();
-          setStatus(err.detail || 'Apply failed', true);
+          log(`Apply failed: ${err.detail}`, 'error');
+          document.getElementById('patchStatus').textContent = 'Failed: ' + (err.detail || 'Unknown error');
+          applyBtn.disabled = false;
+          applyBtn.textContent = 'Apply Patch to Prompt';
           return;
         }
+
         const data = await res.json();
-        setStatus(data.already_applied ? 'Patch already applied' : 'Patch applied');
+        log(`Patch applied! New version: ${data.new_version}`, 'success');
+
+        // Update the agent prompt textarea
+        document.getElementById('agentPrompt').value = data.updated_prompt;
+
+        // Save to localStorage
+        localStorage.setItem('lastAgentPrompt', data.updated_prompt);
+        promptVersion = data.new_version;
+        localStorage.setItem('promptVersion', promptVersion);
+
+        const now = new Date().toLocaleString();
+        localStorage.setItem('promptLastUpdated', now);
+        updateVersionDisplay(promptVersion, now);
+
+        // Add to changelog history
+        const timestamp = new Date().toLocaleTimeString();
+        data.changelog.forEach(entry => {
+          changelogHistory.unshift({
+            ...entry,
+            timestamp: timestamp
+          });
+        });
+        localStorage.setItem('changelogHistory', JSON.stringify(changelogHistory));
+        renderChangelog();
+
+        // Show verification
+        if (data.verified) {
+          log(`Verified: ${data.verification_notes}`, 'success');
+        }
+
+        document.getElementById('patchStatus').textContent = `Applied! Now at ${data.new_version}`;
+        log(`Changelog: ${data.changelog.length} changes recorded`, 'info');
+
       } catch (e) {
-        setStatus(e.message, true);
+        log(`Error: ${e.message}`, 'error');
+        document.getElementById('patchStatus').textContent = 'Error: ' + e.message;
       }
+
+      applyBtn.disabled = false;
+      applyBtn.textContent = 'Apply Patch to Prompt';
     }
 
     function renderRatings(rows) {
