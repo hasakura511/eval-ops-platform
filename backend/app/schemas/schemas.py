@@ -46,8 +46,8 @@ class RubricCreate(BaseModel):
     name: str
     dimensions: List[RubricDimension]
     scoring_rules: Dict[str, Any]
-    disallowed_language: List[str] = []
-    policy: Dict[str, Any] = {}
+    disallowed_language: List[str] = Field(default_factory=list)
+    policy: Dict[str, Any] = Field(default_factory=dict)
 
 
 class RubricResponse(BaseModel):
@@ -70,9 +70,9 @@ class RubricResponse(BaseModel):
 class WorkflowStep(BaseModel):
     step_id: str
     type: str  # "capture", "extract", "verify", "rate"
-    requires: List[str] = []  # artifact_ids or step_ids
+    requires: List[str] = Field(default_factory=list)  # artifact_ids or step_ids
     produces: ArtifactType
-    verifiers: List[str] = []  # verifier names
+    verifiers: List[str] = Field(default_factory=list)  # verifier names
 
 
 class WorkflowCreate(BaseModel):
@@ -80,8 +80,8 @@ class WorkflowCreate(BaseModel):
     name: str
     description: Optional[str] = None
     steps: List[WorkflowStep]
-    retry_policy: Dict[str, Any] = {}
-    escalation_rules: Dict[str, Any] = {}
+    retry_policy: Dict[str, Any] = Field(default_factory=dict)
+    escalation_rules: Dict[str, Any] = Field(default_factory=dict)
     compiled_from: Optional[str] = None
 
 
@@ -134,7 +134,7 @@ class ArtifactCreate(BaseModel):
     storage_path: Optional[str] = None
     content_hash: Optional[str] = None
     size_bytes: Optional[int] = None
-    artifact_metadata: Dict[str, Any] = {}
+    artifact_metadata: Dict[str, Any] = Field(default_factory=dict)
     data: Optional[Dict[str, Any]] = None
 
 
