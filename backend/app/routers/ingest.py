@@ -206,13 +206,21 @@ def _generate_unified_diff(rubric_path: Path, rules_to_add: List[str]) -> Tuple[
 
     original_lines = rubric_path.read_text().splitlines()
     updated_lines = list(original_lines)
+    existing = set(original_lines)
 
     if rules_to_add:
-        if updated_lines and updated_lines[-1].strip():
-            updated_lines.append("")
-        updated_lines.append("## Additional Rules")
+        if "## Additional Rules" not in existing:
+            if updated_lines and updated_lines[-1].strip():
+                updated_lines.append("")
+            updated_lines.append("## Additional Rules")
+            existing.add("## Additional Rules")
         for rule in rules_to_add:
+            if rule in existing:
+                continue
+            if updated_lines and updated_lines[-1].strip() and updated_lines[-1] != "## Additional Rules":
+                updated_lines.append("")
             updated_lines.append(rule)
+            existing.add(rule)
 
     diff = "\n".join(
         difflib.unified_diff(

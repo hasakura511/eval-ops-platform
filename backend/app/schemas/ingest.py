@@ -26,10 +26,10 @@ class ParsedError(BaseModel):
 
 
 class ParsedPayload(BaseModel):
-    debug_info: Dict[str, Any] = {}
-    ratings_table: List[Dict[str, Any]] = []
-    errors: List[ParsedError] = []
-    artifact_refs: List[str] = []
+    debug_info: Dict[str, Any] = Field(default_factory=dict)
+    ratings_table: List[Dict[str, Any]] = Field(default_factory=list)
+    errors: List[ParsedError] = Field(default_factory=list)
+    artifact_refs: List[str] = Field(default_factory=list)
 
 
 class IngestResponse(BaseModel):
