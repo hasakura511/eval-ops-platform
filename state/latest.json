@@ -1,0 +1,142 @@
+{
+  "B_t": {
+    "A_t": {
+      "units": [
+        {
+          "D_i": 0.35,
+          "discretion_spent_this_iter": 0.1,
+          "jurisdiction": "backend-dev",
+          "mandate_ref": "artifact:mandate@ops-07",
+          "unit_id": "ops-07",
+          "variance_memos": [
+            "artifact:variance@v-991"
+          ]
+        },
+        {
+          "D_i": 0.25,
+          "discretion_spent_this_iter": 0.05,
+          "jurisdiction": "security-audit",
+          "mandate_ref": "artifact:mandate@audit-02",
+          "unit_id": "audit-02",
+          "variance_memos": []
+        }
+      ]
+    },
+    "H_t": {
+      "org_chart_ref": "artifact:hierarchy@t000006"
+    },
+    "L_t": {
+      "ledger_head": "hash:abc006",
+      "provenance_ref": "artifact:provenance@t000006",
+      "recent_artifacts": [
+        "artifact:x@t000006.1"
+      ],
+      "recent_audits": [
+        "artifact:audit@a-t000006"
+      ],
+      "recent_decisions": [
+        "artifact:decision@d-t000006"
+      ],
+      "recent_incidents": [
+        "incident:i-t000006"
+      ]
+    },
+    "Pi_t": {
+      "beta": 0.2,
+      "lambda_t": 1.0,
+      "metric_rotation": {
+        "active_profile": "M-03",
+        "next_rotation_t": 45
+      },
+      "mu_t": 0.5,
+      "p": 0.15,
+      "r": 0.3,
+      "w_t": [
+        0.4,
+        0.3,
+        0.3
+      ]
+    },
+    "R_t": {
+      "rule_budget": {
+        "added_this_iter": 1,
+        "b": 1,
+        "current_count": 23,
+        "deleted_this_iter": 1
+      },
+      "rules": [
+        {
+          "created_t": 0,
+          "expires_t": 18,
+          "id": "R-017",
+          "owner_role": "Executive",
+          "risk_tier": "LOW",
+          "text_ref": "artifact:rule@R-017"
+        }
+      ]
+    }
+  },
+  "alerts": [
+    {
+      "evidence_refs": [
+        "artifact:decision@halt-t000006"
+      ],
+      "message": "Critical halt issued pending audit recovery.",
+      "severity": "CRITICAL",
+      "source": "Executive",
+      "type": "SYSTEM_HALT"
+    }
+  ],
+  "commands": {
+    "last_command": {
+      "acked": true,
+      "acked_by": "bureaucracy-loop",
+      "id": "cmd-906",
+      "type": "HALT"
+    }
+  },
+  "evaluation": {
+    "Accept(x_t)": true,
+    "Overhead(x_t)": 0.17,
+    "Risk(x_t)": 0.18,
+    "audit": {
+      "AuditPassed": true,
+      "audit_ref": "artifact:audit@a-t000006",
+      "audited": true
+    },
+    "g(x_t)": {
+      "correctness": 0.91,
+      "quality": 0.88,
+      "usability": 0.72
+    }
+  },
+  "meta": {
+    "global_status": "CRITICAL_HALT",
+    "project_id": "PROJ-ALPHA",
+    "t": 6,
+    "timestamp": "2026-01-14T20:00:00Z"
+  },
+  "physics": {
+    "admin_ratio": 0.12,
+    "goodhart": {
+      "disagreement_rate": 0.06,
+      "drift_score": 0.12
+    },
+    "risk_thermometer": 0.45,
+    "rule_entropy": 0.04
+  },
+  "registry": {
+    "amicus_briefs": 0,
+    "latest_block_hash": "0x9a7...",
+    "pending_memos": 3
+  },
+  "topology": {
+    "active_jurisdictions": [
+      "backend-dev",
+      "frontend-dev",
+      "security-audit"
+    ],
+    "sandbox_jurisdiction": "experimental-features",
+    "sandbox_mode": true
+  }
+}

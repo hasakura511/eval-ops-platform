@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Control Room · Executive Summary</title>
+  <link rel="stylesheet" href="assets/styles.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="brand">
+      <span class="brand-title">Control Room</span>
+      <span class="brand-subtitle" id="project-id">—</span>
+    </div>
+    <nav class="nav">
+      <a class="nav-link active" href="index.html">Summary</a>
+      <a class="nav-link" href="executive.html">Executive</a>
+      <a class="nav-link" href="inspectorate.html">Inspectorate</a>
+      <a class="nav-link" href="records.html">Records</a>
+      <a class="nav-link" href="operations.html">Operations</a>
+      <a class="nav-link" href="sandbox.html">Sandbox</a>
+      <a class="nav-link" href="docs.html">Docs</a>
+    </nav>
+  </header>
+
+  <main class="layout">
+    <section class="panel">
+      <div class="panel-header">
+        <h1>Executive Summary</h1>
+        <div class="status">
+          <span id="status-beacon" class="status-beacon">&nbsp;</span>
+          <span id="global-status">—</span>
+        </div>
+      </div>
+      <div class="meta-grid">
+        <div>
+          <h3>Time</h3>
+          <p id="meta-time">—</p>
+        </div>
+        <div>
+          <h3>Iteration</h3>
+          <p id="meta-t">—</p>
+        </div>
+        <div>
+          <h3>Command</h3>
+          <p id="last-command">—</p>
+        </div>
+      </div>
+      <div class="scrubber">
+        <label for="time-scrubber">Time Scrubber</label>
+        <select id="time-scrubber"></select>
+      </div>
+    </section>
+
+    <section class="grid two">
+      <div class="panel">
+        <h2>Admin Ratio</h2>
+        <div class="metric">
+          <span class="metric-label">AdminRatio</span>
+          <span id="admin-ratio" class="metric-value">—</span>
+        </div>
+        <div class="metric">
+          <span class="metric-label">Beta</span>
+          <span id="beta" class="metric-value">—</span>
+        </div>
+        <p id="admin-ratio-status" class="callout">—</p>
+      </div>
+      <div class="panel">
+        <h2>Goodhart Signals</h2>
+        <div class="metric">
+          <span class="metric-label">Drift</span>
+          <span id="goodhart-drift" class="metric-value">—</span>
+        </div>
+        <div class="metric">
+          <span class="metric-label">Disagreement</span>
+          <span id="goodhart-disagreement" class="metric-value">—</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="grid two">
+      <div class="panel">
+        <h2>Alerts</h2>
+        <ul id="alerts-list" class="list"></ul>
+      </div>
+      <div class="panel">
+        <h2>Records Links</h2>
+        <div class="metric">
+          <span class="metric-label">Ledger Head</span>
+          <a id="ledger-head" class="metric-value" href="#">—</a>
+        </div>
+        <div class="metric">
+          <span class="metric-label">Provenance</span>
+          <a id="provenance-ref" class="metric-value" href="#">—</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="assets/app.js"></script>
+</body>
+</html>

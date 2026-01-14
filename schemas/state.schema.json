@@ -1,0 +1,277 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Bureaucratic Autoregression state.json schema v2.1",
+  "type": "object",
+  "required": ["meta", "B_t", "physics", "evaluation", "alerts", "commands"],
+  "properties": {
+    "meta": {
+      "type": "object",
+      "required": ["project_id", "t", "timestamp", "global_status"],
+      "properties": {
+        "project_id": {"type": "string"},
+        "t": {"type": "integer", "minimum": 0},
+        "timestamp": {"type": "string", "format": "date-time"},
+        "global_status": {"type": "string"}
+      },
+      "additionalProperties": false
+    },
+    "B_t": {
+      "type": "object",
+      "required": ["H_t", "R_t", "A_t", "Pi_t", "L_t"],
+      "properties": {
+        "H_t": {
+          "type": "object",
+          "required": ["org_chart_ref"],
+          "properties": {
+            "org_chart_ref": {"$ref": "#/$defs/artifactRef"}
+          },
+          "additionalProperties": false
+        },
+        "R_t": {
+          "type": "object",
+          "required": ["rules", "rule_budget"],
+          "properties": {
+            "rules": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["id", "text_ref", "created_t", "expires_t", "owner_role", "risk_tier"],
+                "properties": {
+                  "id": {"type": "string"},
+                  "text_ref": {"$ref": "#/$defs/artifactRef"},
+                  "created_t": {"type": "integer", "minimum": 0},
+                  "expires_t": {"type": "integer", "minimum": 0},
+                  "owner_role": {"type": "string"},
+                  "risk_tier": {"type": "string"}
+                },
+                "additionalProperties": false
+              }
+            },
+            "rule_budget": {
+              "type": "object",
+              "required": ["b", "current_count", "added_this_iter", "deleted_this_iter"],
+              "properties": {
+                "b": {"type": "integer", "minimum": 0},
+                "current_count": {"type": "integer", "minimum": 0},
+                "added_this_iter": {"type": "integer", "minimum": 0},
+                "deleted_this_iter": {"type": "integer", "minimum": 0}
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        "A_t": {
+          "type": "object",
+          "required": ["units"],
+          "properties": {
+            "units": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "unit_id",
+                  "mandate_ref",
+                  "jurisdiction",
+                  "D_i",
+                  "discretion_spent_this_iter",
+                  "variance_memos"
+                ],
+                "properties": {
+                  "unit_id": {"type": "string"},
+                  "mandate_ref": {"$ref": "#/$defs/artifactRef"},
+                  "jurisdiction": {"type": "string"},
+                  "D_i": {"type": "number", "minimum": 0, "maximum": 1},
+                  "discretion_spent_this_iter": {"type": "number", "minimum": 0},
+                  "variance_memos": {
+                    "type": "array",
+                    "items": {"$ref": "#/$defs/artifactRef"}
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        "Pi_t": {
+          "type": "object",
+          "required": ["p", "beta", "r", "w_t", "lambda_t", "mu_t", "metric_rotation"],
+          "properties": {
+            "p": {"type": "number", "minimum": 0, "maximum": 1},
+            "beta": {"type": "number", "exclusiveMinimum": 0, "maximum": 1},
+            "r": {"type": "number", "minimum": 0, "maximum": 1},
+            "w_t": {
+              "type": "array",
+              "items": {"type": "number"},
+              "minItems": 1
+            },
+            "lambda_t": {"type": "number", "minimum": 0},
+            "mu_t": {"type": "number", "minimum": 0},
+            "metric_rotation": {
+              "type": "object",
+              "required": ["active_profile", "next_rotation_t"],
+              "properties": {
+                "active_profile": {"type": "string"},
+                "next_rotation_t": {"type": "integer", "minimum": 0}
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        "L_t": {
+          "type": "object",
+          "required": [
+            "ledger_head",
+            "recent_artifacts",
+            "recent_decisions",
+            "recent_audits",
+            "recent_incidents",
+            "provenance_ref"
+          ],
+          "properties": {
+            "ledger_head": {"$ref": "#/$defs/hashRef"},
+            "recent_artifacts": {
+              "type": "array",
+              "items": {"$ref": "#/$defs/artifactRef"}
+            },
+            "recent_decisions": {
+              "type": "array",
+              "items": {"$ref": "#/$defs/artifactRef"}
+            },
+            "recent_audits": {
+              "type": "array",
+              "items": {"$ref": "#/$defs/artifactRef"}
+            },
+            "recent_incidents": {
+              "type": "array",
+              "items": {"type": "string"}
+            },
+            "provenance_ref": {"$ref": "#/$defs/artifactRef"}
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "topology": {
+      "type": "object",
+      "required": ["active_jurisdictions", "sandbox_mode", "sandbox_jurisdiction"],
+      "properties": {
+        "active_jurisdictions": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "sandbox_mode": {"type": "boolean"},
+        "sandbox_jurisdiction": {"type": "string"}
+      },
+      "additionalProperties": false
+    },
+    "physics": {
+      "type": "object",
+      "required": ["admin_ratio", "rule_entropy", "goodhart", "risk_thermometer"],
+      "properties": {
+        "admin_ratio": {"type": "number", "minimum": 0, "maximum": 1},
+        "rule_entropy": {"type": "number", "minimum": 0},
+        "goodhart": {
+          "type": "object",
+          "required": ["disagreement_rate", "drift_score"],
+          "properties": {
+            "disagreement_rate": {"type": "number", "minimum": 0, "maximum": 1},
+            "drift_score": {"type": "number", "minimum": 0}
+          },
+          "additionalProperties": false
+        },
+        "risk_thermometer": {"type": "number", "minimum": 0}
+      },
+      "additionalProperties": false
+    },
+    "evaluation": {
+      "type": "object",
+      "required": ["g(x_t)", "Risk(x_t)", "Overhead(x_t)", "Accept(x_t)", "audit"],
+      "properties": {
+        "g(x_t)": {
+          "type": "object",
+          "properties": {
+            "quality": {"type": "number"},
+            "correctness": {"type": "number"},
+            "usability": {"type": "number"}
+          },
+          "additionalProperties": true
+        },
+        "Risk(x_t)": {"type": "number", "minimum": 0},
+        "Overhead(x_t)": {"type": "number", "minimum": 0},
+        "Accept(x_t)": {"type": "boolean"},
+        "audit": {
+          "type": "object",
+          "required": ["audited", "AuditPassed", "audit_ref"],
+          "properties": {
+            "audited": {"type": "boolean"},
+            "AuditPassed": {"type": "boolean"},
+            "audit_ref": {"$ref": "#/$defs/artifactRef"}
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "registry": {
+      "type": "object",
+      "required": ["latest_block_hash", "pending_memos", "amicus_briefs"],
+      "properties": {
+        "latest_block_hash": {"type": "string"},
+        "pending_memos": {"type": "integer", "minimum": 0},
+        "amicus_briefs": {"type": "integer", "minimum": 0}
+      },
+      "additionalProperties": false
+    },
+    "alerts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["severity", "type", "source", "message", "evidence_refs"],
+        "properties": {
+          "severity": {"type": "string"},
+          "type": {"type": "string"},
+          "source": {"type": "string"},
+          "message": {"type": "string"},
+          "evidence_refs": {
+            "type": "array",
+            "items": {"$ref": "#/$defs/artifactRef"}
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "commands": {
+      "type": "object",
+      "required": ["last_command"],
+      "properties": {
+        "last_command": {
+          "type": "object",
+          "required": ["id", "type", "acked", "acked_by"],
+          "properties": {
+            "id": {"type": "string"},
+            "type": {"type": "string"},
+            "acked": {"type": "boolean"},
+            "acked_by": {"type": "string"}
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "$defs": {
+    "artifactRef": {
+      "type": "string",
+      "pattern": "^artifact:[A-Za-z0-9._@:-]+$"
+    },
+    "hashRef": {
+      "type": "string",
+      "pattern": "^hash:[A-Za-z0-9]+$"
+    }
+  },
+  "additionalProperties": false
+}
