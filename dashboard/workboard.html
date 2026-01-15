@@ -15,9 +15,6 @@
     <nav class="nav">
       <a class="nav-link active" href="workboard.html">Workboard</a>
       <a class="nav-link" href="hierarchy.html">Hierarchy</a>
-      <a class="nav-link" href="index.html">Summary</a>
-      <a class="nav-link" href="operations.html">Operations</a>
-      <a class="nav-link" href="records.html">Records</a>
     </nav>
   </header>
 
@@ -25,171 +22,605 @@
     <section class="panel control-header">
       <div class="panel-header">
         <h1>
-          <span class="info-wrap">Workboard
-            <button class="info-button" type="button" aria-label="About Workboard" aria-describedby="info-workboard-title">?</button>
-            <span id="info-workboard-title" role="tooltip" class="info-tooltip">Portrait monitoring view for triage. Shows live runs, failures, and next actions.</span>
+          <span class="info-wrap">
+            <span class="info-label">Workboard <span class="json-key">screen.workboard</span></span>
+            <button class="info-button" type="button" aria-label="Explain Workboard" aria-expanded="false" aria-controls="info-workboard-title">?</button>
+            <span id="info-workboard-title" class="info-panel" role="region" aria-hidden="true">
+              <div class="info-panel-section">
+                <div class="info-panel-title">Purpose</div>
+                <div>Portrait triage view for deciding which runs need attention now.</div>
+              </div>
+              <div class="info-panel-section">
+                <div class="info-panel-title">Inputs</div>
+                <ul>
+                  <li>Snapshot core fields <span class="json-key">as_of</span>, <span class="json-key">health</span>.</li>
+                  <li>Run list <span class="json-key">projects[].tracks[].runs[]</span>.</li>
+                  <li>Todos and alerts <span class="json-key">runs[].todos[]</span>, <span class="json-key">alerts[]</span>.</li>
+                </ul>
+              </div>
+              <div class="info-panel-section">
+                <div class="info-panel-title">Output / Action</div>
+                <ul>
+                  <li>Pick which run to open, assign, or escalate.</li>
+                  <li>Decide whether the system is healthy enough to proceed.</li>
+                </ul>
+              </div>
+              <div class="info-panel-section">
+                <div class="info-panel-title">Failure modes</div>
+                <ul>
+                  <li>Snapshot can be stale, hiding new failures.</li>
+                  <li>Metrics may be undefined or inconsistent across tracks.</li>
+                </ul>
+              </div>
+              <div class="info-panel-section">
+                <div class="info-panel-title">Future link</div>
+                <div>Runner + judge pipeline + human triage populate the snapshot.</div>
+              </div>
+            </span>
           </span>
         </h1>
         <div class="status">
-          <span class="info-wrap">Snapshot Status
-            <button class="info-button" type="button" aria-label="About Snapshot Status" aria-describedby="info-workboard-status">?</button>
-            <span id="info-workboard-status" role="tooltip" class="info-tooltip">Live indicates the snapshot loaded successfully. Offline means the poller failed.</span>
+          <span class="info-wrap">
+            <span class="info-label">Snapshot Status <span class="json-key">client.poller</span></span>
+            <button class="info-button" type="button" aria-label="Explain Snapshot Status" aria-expanded="false" aria-controls="info-workboard-status">?</button>
+            <span id="info-workboard-status" class="info-panel" role="region" aria-hidden="true">
+              <div class="info-panel-section">
+                <div class="info-panel-title">Purpose</div>
+                <div>Signal whether the browser successfully loaded the snapshot.</div>
+              </div>
+              <div class="info-panel-section">
+                <div class="info-panel-title">Inputs</div>
+                <ul>
+                  <li>Client poller fetch success (not from snapshot).</li>
+                </ul>
+              </div>
+              <div class="info-panel-section">
+                <div class="info-panel-title">Output / Action</div>
+                <ul>
+                  <li>If offline, reload or check the static server.</li>
+                </ul>
+              </div>
+              <div class="info-panel-section">
+                <div class="info-panel-title">Failure modes</div>
+                <ul>
+                  <li>Client network issues can look like system failure.</li>
+                </ul>
+              </div>
+              <div class="info-panel-section">
+                <div class="info-panel-title">Future link</div>
+                <div>Client-side polling status, not a backend signal.</div>
+              </div>
+            </span>
           </span>
-        <h1>Workboard</h1>
-        <div class="status">
           <span class="status-pill" id="snapshot-status">—</span>
         </div>
       </div>
       <div class="meta-grid">
         <div>
           <h3>
-            <span class="info-wrap">As of
-              <button class="info-button" type="button" aria-label="About As of" aria-describedby="info-workboard-asof">?</button>
-              <span id="info-workboard-asof" role="tooltip" class="info-tooltip">Timestamp of the snapshot used to render this page (ISO-8601).</span>
+            <span class="info-wrap">
+              <span class="info-label">As of <span class="json-key">as_of</span></span>
+              <button class="info-button" type="button" aria-label="Explain As of" aria-expanded="false" aria-controls="info-workboard-asof">?</button>
+              <span id="info-workboard-asof" class="info-panel" role="region" aria-hidden="true">
+                <div class="info-panel-section">
+                  <div class="info-panel-title">Purpose</div>
+                  <div>Anchor every decision to the timestamp of the snapshot.</div>
+                </div>
+                <div class="info-panel-section">
+                  <div class="info-panel-title">Inputs</div>
+                  <ul>
+                    <li>Snapshot timestamp <span class="json-key">as_of</span>.</li>
+                  </ul>
+                </div>
+                <div class="info-panel-section">
+                  <div class="info-panel-title">Output / Action</div>
+                  <ul>
+                    <li>Decide whether data is recent enough to act on.</li>
+                  </ul>
+                </div>
+                <div class="info-panel-section">
+                  <div class="info-panel-title">Failure modes</div>
+                  <ul>
+                    <li>Time skew hides stale data.</li>
+                  </ul>
+                </div>
+                <div class="info-panel-section">
+                  <div class="info-panel-title">Future link</div>
+                  <div>Snapshot builder stamps <span class="json-key">as_of</span>.</div>
+                </div>
+              </span>
             </span>
           </h3>
           <p id="snapshot-time">—</p>
         </div>
         <div>
           <h3>
-            <span class="info-wrap">Health
-              <button class="info-button" type="button" aria-label="About Health" aria-describedby="info-workboard-health">?</button>
-              <span id="info-workboard-health" role="tooltip" class="info-tooltip">Overall data health indicator. TODO: define exact thresholds and meanings.</span>
+            <span class="info-wrap">
+              <span class="info-label">Health <span class="json-key">health.status</span></span>
+              <button class="info-button" type="button" aria-label="Explain Health" aria-expanded="false" aria-controls="info-workboard-health">?</button>
+              <span id="info-workboard-health" class="info-panel" role="region" aria-hidden="true">
+                <div class="info-panel-section">
+                  <div class="info-panel-title">Purpose</div>
+                  <div>Summarize overall data health for quick go/no-go decisions.</div>
+                </div>
+                <div class="info-panel-section">
+                  <div class="info-panel-title">Inputs</div>
+                  <ul>
+                    <li>Health status string <span class="json-key">health.status</span>.</li>
+                  </ul>
+                </div>
+                <div class="info-panel-section">
+                  <div class="info-panel-title">Output / Action</div>
+                  <ul>
+                    <li>Escalate when health is warning or critical.</li>
+                  </ul>
+                </div>
+                <div class="info-panel-section">
+                  <div class="info-panel-title">Failure modes</div>
+                  <ul>
+                    <li>Thresholds are undefined; status may be arbitrary.</li>
+                  </ul>
+                </div>
+                <div class="info-panel-section">
+                  <div class="info-panel-title">Future link</div>
+                  <div>Snapshot validator computes <span class="json-key">health.status</span>.</div>
+                </div>
+              </span>
             </span>
           </h3>
           <p id="snapshot-health">—</p>
         </div>
         <div>
           <h3>
-            <span class="info-wrap">Freshness
-              <button class="info-button" type="button" aria-label="About Freshness" aria-describedby="info-workboard-freshness">?</button>
-              <span id="info-workboard-freshness" role="tooltip" class="info-tooltip">Age of the snapshot in seconds. Lower is better; high values indicate stale data.</span>
+            <span class="info-wrap">
+              <span class="info-label">Freshness <span class="json-key">health.data_freshness_seconds</span></span>
+              <button class="info-button" type="button" aria-label="Explain Freshness" aria-expanded="false" aria-controls="info-workboard-freshness">?</button>
+              <span id="info-workboard-freshness" class="info-panel" role="region" aria-hidden="true">
+                <div class="info-panel-section">
+                  <div class="info-panel-title">Purpose</div>
+                  <div>Show how old the snapshot is to gauge staleness.</div>
+                </div>
+                <div class="info-panel-section">
+                  <div class="info-panel-title">Inputs</div>
+                  <ul>
+                    <li>Seconds since refresh <span class="json-key">health.data_freshness_seconds</span>.</li>
+                  </ul>
+                </div>
+                <div class="info-panel-section">
+                  <div class="info-panel-title">Output / Action</div>
+                  <ul>
+                    <li>Refresh or pause decisions if freshness is high.</li>
+                  </ul>
+                </div>
+                <div class="info-panel-section">
+                  <div class="info-panel-title">Failure modes</div>
+                  <ul>
+                    <li>Clock skew inflates or hides staleness.</li>
+                  </ul>
+                </div>
+                <div class="info-panel-section">
+                  <div class="info-panel-title">Future link</div>
+                  <div>Snapshot builder computes freshness.</div>
+                </div>
+              </span>
             </span>
           </h3>
           <p id="snapshot-freshness">—</p>
         </div>
         <div>
           <h3>
-            <span class="info-wrap">Alerts
-              <button class="info-button" type="button" aria-label="About Alerts count" aria-describedby="info-workboard-alerts">?</button>
-              <span id="info-workboard-alerts" role="tooltip" class="info-tooltip">Count of active alerts in the snapshot. High counts require triage.</span>
+            <span class="info-wrap">
+              <span class="info-label">Alerts <span class="json-key">health.active_alerts_count</span></span>
+              <button class="info-button" type="button" aria-label="Explain Alerts" aria-expanded="false" aria-controls="info-workboard-alerts">?</button>
+              <span id="info-workboard-alerts" class="info-panel" role="region" aria-hidden="true">
+                <div class="info-panel-section">
+                  <div class="info-panel-title">Purpose</div>
+                  <div>Quantify how many active alerts need triage.</div>
+                </div>
+                <div class="info-panel-section">
+                  <div class="info-panel-title">Inputs</div>
+                  <ul>
+                    <li>Alert count <span class="json-key">health.active_alerts_count</span>.</li>
+                  </ul>
+                </div>
+                <div class="info-panel-section">
+                  <div class="info-panel-title">Output / Action</div>
+                  <ul>
+                    <li>Prioritize alert review when counts spike.</li>
+                  </ul>
+                </div>
+                <div class="info-panel-section">
+                  <div class="info-panel-title">Failure modes</div>
+                  <ul>
+                    <li>Count alone does not convey severity.</li>
+                  </ul>
+                </div>
+                <div class="info-panel-section">
+                  <div class="info-panel-title">Future link</div>
+                  <div>Alerting system writes alerts into the snapshot.</div>
+                </div>
+              </span>
             </span>
           </h3>
-          <h3>As of</h3>
-          <p id="snapshot-time">—</p>
-        </div>
-        <div>
-          <h3>Health</h3>
-          <p id="snapshot-health">—</p>
-        </div>
-        <div>
-          <h3>Freshness</h3>
-          <p id="snapshot-freshness">—</p>
-        </div>
-        <div>
-          <h3>Alerts</h3>
           <p id="snapshot-alerts">—</p>
         </div>
+      </div>
+      <div class="toggle-row">
+        <label><input id="toggle-json-keys" type="checkbox" /> Show JSON keys</label>
+      </div>
+      <div class="reasoning-block">
+        <h2>Why this screen exists</h2>
+        <p>Two-monitor intent: portrait shows the triage list (this screen), while ultrawide shows ownership and hierarchy.</p>
+        <p><strong>Learn in 10 seconds:</strong> which runs are failing, who owns them, and what the next action is.</p>
+        <p><strong>Next action:</strong> pick the top failing run, check artifacts, and assign a human or agent to unblock it.</p>
+      </div>
+      <div class="assumptions-box">
+        <h3>Assumptions / Open Questions</h3>
+        <ul>
+          <li>What does <span class="json-key">health.status</span> mean and who computes it?</li>
+          <li>What is the canonical definition of <span class="json-key">failure_count</span>?</li>
+          <li>What freshness threshold makes a snapshot unsafe to act on?</li>
+        </ul>
       </div>
     </section>
 
     <section class="panel filters">
       <h2>
-        <span class="info-wrap">Filters
-          <button class="info-button" type="button" aria-label="About Filters" aria-describedby="info-workboard-filters">?</button>
-          <span id="info-workboard-filters" role="tooltip" class="info-tooltip">Client-side filters for narrowing the run list. Does not change backend data.</span>
+        <span class="info-wrap">
+          <span class="info-label">Filters <span class="json-key">client.filters</span></span>
+          <button class="info-button" type="button" aria-label="Explain Filters" aria-expanded="false" aria-controls="info-workboard-filters">?</button>
+          <span id="info-workboard-filters" class="info-panel" role="region" aria-hidden="true">
+            <div class="info-panel-section">
+              <div class="info-panel-title">Purpose</div>
+              <div>Narrow the run list without changing backend data.</div>
+            </div>
+            <div class="info-panel-section">
+              <div class="info-panel-title">Inputs</div>
+              <ul>
+                <li>Project, track, status, owner, and search fields.</li>
+              </ul>
+            </div>
+            <div class="info-panel-section">
+              <div class="info-panel-title">Output / Action</div>
+              <ul>
+                <li>Focus on a subset of runs for triage.</li>
+              </ul>
+            </div>
+            <div class="info-panel-section">
+              <div class="info-panel-title">Failure modes</div>
+              <ul>
+                <li>Filters can hide critical runs from view.</li>
+              </ul>
+            </div>
+            <div class="info-panel-section">
+              <div class="info-panel-title">Future link</div>
+              <div>Client-only; no backend filtering yet.</div>
+            </div>
+          </span>
         </span>
       </h2>
       <div class="filter-grid">
         <label>
-          <span class="info-wrap">Project
-            <button class="info-button" type="button" aria-label="About Project filter" aria-describedby="info-workboard-filter-project">?</button>
-            <span id="info-workboard-filter-project" role="tooltip" class="info-tooltip">Select a project to filter runs by scope.</span>
+          <span class="info-wrap">
+            <span class="info-label">Project <span class="json-key">projects[].project_id</span></span>
+            <button class="info-button" type="button" aria-label="Explain Project filter" aria-expanded="false" aria-controls="info-workboard-filter-project">?</button>
+            <span id="info-workboard-filter-project" class="info-panel" role="region" aria-hidden="true">
+              <div class="info-panel-section">
+                <div class="info-panel-title">Purpose</div>
+                <div>Filter runs to a single project scope.</div>
+              </div>
+              <div class="info-panel-section">
+                <div class="info-panel-title">Inputs</div>
+                <ul>
+                  <li>Project id/name <span class="json-key">projects[].project_id</span>, <span class="json-key">projects[].name</span>.</li>
+                </ul>
+              </div>
+              <div class="info-panel-section">
+                <div class="info-panel-title">Output / Action</div>
+                <ul>
+                  <li>Focus triage on one project at a time.</li>
+                </ul>
+              </div>
+              <div class="info-panel-section">
+                <div class="info-panel-title">Failure modes</div>
+                <ul>
+                  <li>Missing names make projects hard to distinguish.</li>
+                </ul>
+              </div>
+              <div class="info-panel-section">
+                <div class="info-panel-title">Future link</div>
+                <div>Project registry feeds project metadata.</div>
+              </div>
+            </span>
           </span>
           <select id="filter-project"></select>
         </label>
         <label>
-          <span class="info-wrap">Track
-            <button class="info-button" type="button" aria-label="About Track filter" aria-describedby="info-workboard-filter-track">?</button>
-            <span id="info-workboard-filter-track" role="tooltip" class="info-tooltip">Filter by track type (bilingual, redteam, media, etc.).</span>
+          <span class="info-wrap">
+            <span class="info-label">Track <span class="json-key">tracks[].track_id</span></span>
+            <button class="info-button" type="button" aria-label="Explain Track filter" aria-expanded="false" aria-controls="info-workboard-filter-track">?</button>
+            <span id="info-workboard-filter-track" class="info-panel" role="region" aria-hidden="true">
+              <div class="info-panel-section">
+                <div class="info-panel-title">Purpose</div>
+                <div>Filter runs by track type (bilingual, redteam, media).</div>
+              </div>
+              <div class="info-panel-section">
+                <div class="info-panel-title">Inputs</div>
+                <ul>
+                  <li>Track id/name/type <span class="json-key">projects[].tracks[].track_id</span>, <span class="json-key">projects[].tracks[].type</span>.</li>
+                </ul>
+              </div>
+              <div class="info-panel-section">
+                <div class="info-panel-title">Output / Action</div>
+                <ul>
+                  <li>Focus on a single evaluation track.</li>
+                </ul>
+              </div>
+              <div class="info-panel-section">
+                <div class="info-panel-title">Failure modes</div>
+                <ul>
+                  <li>Track types are not standardized yet.</li>
+                </ul>
+              </div>
+              <div class="info-panel-section">
+                <div class="info-panel-title">Future link</div>
+                <div>Runner pipeline emits track metadata.</div>
+              </div>
+            </span>
           </span>
           <select id="filter-track"></select>
         </label>
         <label>
-          <span class="info-wrap">Status
-            <button class="info-button" type="button" aria-label="About Status filter" aria-describedby="info-workboard-filter-status">?</button>
-            <span id="info-workboard-filter-status" role="tooltip" class="info-tooltip">Filter by run status (running, failed, pending, blocked).</span>
+          <span class="info-wrap">
+            <span class="info-label">Status <span class="json-key">runs[].status</span></span>
+            <button class="info-button" type="button" aria-label="Explain Status filter" aria-expanded="false" aria-controls="info-workboard-filter-status">?</button>
+            <span id="info-workboard-filter-status" class="info-panel" role="region" aria-hidden="true">
+              <div class="info-panel-section">
+                <div class="info-panel-title">Purpose</div>
+                <div>Filter runs by current state (running, failed, blocked).</div>
+              </div>
+              <div class="info-panel-section">
+                <div class="info-panel-title">Inputs</div>
+                <ul>
+                  <li>Run status <span class="json-key">projects[].tracks[].runs[].status</span>.</li>
+                </ul>
+              </div>
+              <div class="info-panel-section">
+                <div class="info-panel-title">Output / Action</div>
+                <ul>
+                  <li>Show only runs in a given state for focused triage.</li>
+                </ul>
+              </div>
+              <div class="info-panel-section">
+                <div class="info-panel-title">Failure modes</div>
+                <ul>
+                  <li>Status labels may be inconsistent across runners.</li>
+                </ul>
+              </div>
+              <div class="info-panel-section">
+                <div class="info-panel-title">Future link</div>
+                <div>Runner and judge states populate status.</div>
+              </div>
+            </span>
           </span>
           <select id="filter-status"></select>
         </label>
         <label>
-          <span class="info-wrap">Owner
-            <button class="info-button" type="button" aria-label="About Owner filter" aria-describedby="info-workboard-filter-owner">?</button>
-            <span id="info-workboard-filter-owner" role="tooltip" class="info-tooltip">Filter runs by current owner or agent.</span>
+          <span class="info-wrap">
+            <span class="info-label">Owner <span class="json-key">runs[].owner</span></span>
+            <button class="info-button" type="button" aria-label="Explain Owner filter" aria-expanded="false" aria-controls="info-workboard-filter-owner">?</button>
+            <span id="info-workboard-filter-owner" class="info-panel" role="region" aria-hidden="true">
+              <div class="info-panel-section">
+                <div class="info-panel-title">Purpose</div>
+                <div>Filter runs by accountable owner.</div>
+              </div>
+              <div class="info-panel-section">
+                <div class="info-panel-title">Inputs</div>
+                <ul>
+                  <li>Owner id/name <span class="json-key">runs[].owner.agent_id</span>, <span class="json-key">runs[].owner.display_name</span>.</li>
+                </ul>
+              </div>
+              <div class="info-panel-section">
+                <div class="info-panel-title">Output / Action</div>
+                <ul>
+                  <li>Review what a specific owner is responsible for.</li>
+                </ul>
+              </div>
+              <div class="info-panel-section">
+                <div class="info-panel-title">Failure modes</div>
+                <ul>
+                  <li>Missing owners hide routing information.</li>
+                </ul>
+              </div>
+              <div class="info-panel-section">
+                <div class="info-panel-title">Future link</div>
+                <div>Human staffing + agent registry provide owners.</div>
+              </div>
+            </span>
           </span>
           <select id="filter-owner"></select>
         </label>
         <label class="filter-search">
-          <span class="info-wrap">Search
-            <button class="info-button" type="button" aria-label="About Search filter" aria-describedby="info-workboard-filter-search">?</button>
-            <span id="info-workboard-filter-search" role="tooltip" class="info-tooltip">Search by run ID, owner name, or next action text.</span>
+          <span class="info-wrap">
+            <span class="info-label">Search <span class="json-key">client.search</span></span>
+            <button class="info-button" type="button" aria-label="Explain Search filter" aria-expanded="false" aria-controls="info-workboard-filter-search">?</button>
+            <span id="info-workboard-filter-search" class="info-panel" role="region" aria-hidden="true">
+              <div class="info-panel-section">
+                <div class="info-panel-title">Purpose</div>
+                <div>Quickly find runs by id, owner, or next action.</div>
+              </div>
+              <div class="info-panel-section">
+                <div class="info-panel-title">Inputs</div>
+                <ul>
+                  <li>Run id <span class="json-key">runs[].run_id</span>.</li>
+                  <li>Owner name <span class="json-key">runs[].owner.display_name</span>.</li>
+                  <li>Next action <span class="json-key">runs[].next_action</span>.</li>
+                </ul>
+              </div>
+              <div class="info-panel-section">
+                <div class="info-panel-title">Output / Action</div>
+                <ul>
+                  <li>Jump to a specific run without paging.</li>
+                </ul>
+              </div>
+              <div class="info-panel-section">
+                <div class="info-panel-title">Failure modes</div>
+                <ul>
+                  <li>Search is case-insensitive but partial; can miss abbreviations.</li>
+                </ul>
+              </div>
+              <div class="info-panel-section">
+                <div class="info-panel-title">Future link</div>
+                <div>Client-side only; may later become server-side.</div>
+              </div>
+            </span>
           </span>
-      <h2>Filters</h2>
-      <div class="filter-grid">
-        <label>
-          Project
-          <select id="filter-project"></select>
-        </label>
-        <label>
-          Track
-          <select id="filter-track"></select>
-        </label>
-        <label>
-          Status
-          <select id="filter-status"></select>
-        </label>
-        <label>
-          Owner
-          <select id="filter-owner"></select>
-        </label>
-        <label class="filter-search">
-          Search
           <input id="filter-search" type="search" placeholder="Run id, owner, next action" />
         </label>
+      </div>
+      <div class="assumptions-box">
+        <h3>Assumptions / Open Questions</h3>
+        <ul>
+          <li>Should filters be persisted to URL for shareable triage links?</li>
+          <li>Are track types finite or free-form?</li>
+        </ul>
       </div>
     </section>
 
     <section class="panel">
       <h2>
-        <span class="info-wrap">Failure Spotlight
-          <button class="info-button" type="button" aria-label="About Failure Spotlight" aria-describedby="info-workboard-spotlight">?</button>
-          <span id="info-workboard-spotlight" role="tooltip" class="info-tooltip">Top failing runs by failure count. Prioritize these for immediate triage.</span>
+        <span class="info-wrap">
+          <span class="info-label">Failure Spotlight <span class="json-key">runs[].failure_count</span></span>
+          <button class="info-button" type="button" aria-label="Explain Failure Spotlight" aria-expanded="false" aria-controls="info-workboard-spotlight">?</button>
+          <span id="info-workboard-spotlight" class="info-panel" role="region" aria-hidden="true">
+            <div class="info-panel-section">
+              <div class="info-panel-title">Purpose</div>
+              <div>Highlight the top failing runs to triage first.</div>
+            </div>
+            <div class="info-panel-section">
+              <div class="info-panel-title">Inputs</div>
+              <ul>
+                <li>Run id <span class="json-key">runs[].run_id</span>.</li>
+                <li>Failure count <span class="json-key">runs[].failure_count</span>.</li>
+              </ul>
+            </div>
+            <div class="info-panel-section">
+              <div class="info-panel-title">Output / Action</div>
+              <ul>
+                <li>Escalate or pause the most problematic runs.</li>
+              </ul>
+            </div>
+            <div class="info-panel-section">
+              <div class="info-panel-title">Failure modes</div>
+              <ul>
+                <li>Failure count is not normalized by run size.</li>
+              </ul>
+            </div>
+            <div class="info-panel-section">
+              <div class="info-panel-title">Future link</div>
+              <div>Audit subsystem feeds failure_count into snapshot.</div>
+            </div>
+          </span>
         </span>
       </h2>
-      <h2>Failure Spotlight</h2>
       <div id="failure-spotlight" class="spotlight"></div>
+      <div class="assumptions-box">
+        <h3>Assumptions / Open Questions</h3>
+        <ul>
+          <li>Should failures be weighted by severity, not just count?</li>
+          <li>Is a run with 1 severe failure more urgent than 5 minor?</li>
+        </ul>
+      </div>
     </section>
 
     <section class="panel">
       <h2>
-        <span class="info-wrap">Workboard Runs
-          <button class="info-button" type="button" aria-label="About Workboard Runs" aria-describedby="info-workboard-runs">?</button>
-          <span id="info-workboard-runs" role="tooltip" class="info-tooltip">Active and recent runs with status, owner, metrics, and todos.</span>
+        <span class="info-wrap">
+          <span class="info-label">Workboard Runs <span class="json-key">projects[].tracks[].runs[]</span></span>
+          <button class="info-button" type="button" aria-label="Explain Workboard Runs" aria-expanded="false" aria-controls="info-workboard-runs">?</button>
+          <span id="info-workboard-runs" class="info-panel" role="region" aria-hidden="true">
+            <div class="info-panel-section">
+              <div class="info-panel-title">Purpose</div>
+              <div>List active and recent runs with context, metrics, and todos.</div>
+            </div>
+            <div class="info-panel-section">
+              <div class="info-panel-title">Inputs</div>
+              <ul>
+                <li>Run objects <span class="json-key">projects[].tracks[].runs[]</span>.</li>
+              </ul>
+            </div>
+            <div class="info-panel-section">
+              <div class="info-panel-title">Output / Action</div>
+              <ul>
+                <li>Open run details, review artifacts, and assign next steps.</li>
+              </ul>
+            </div>
+            <div class="info-panel-section">
+              <div class="info-panel-title">Failure modes</div>
+              <ul>
+                <li>Missing metrics or todos can hide critical blockers.</li>
+              </ul>
+            </div>
+            <div class="info-panel-section">
+              <div class="info-panel-title">Future link</div>
+              <div>Runner + judge + human triage populate run objects.</div>
+            </div>
+          </span>
         </span>
       </h2>
-      <h2>Workboard Runs</h2>
       <div id="workboard-list" class="workboard-list"></div>
+      <div class="assumptions-box">
+        <h3>Assumptions / Open Questions</h3>
+        <ul>
+          <li>What is the canonical list of run statuses?</li>
+          <li>Which metrics are required for every run?</li>
+        </ul>
+      </div>
     </section>
 
     <section class="panel">
       <h2>
-        <span class="info-wrap">Todo Feed
-          <button class="info-button" type="button" aria-label="About Todo Feed" aria-describedby="info-workboard-todo-feed">?</button>
-          <span id="info-workboard-todo-feed" role="tooltip" class="info-tooltip">Chronological list of recent action items across runs.</span>
+        <span class="info-wrap">
+          <span class="info-label">Todo Feed <span class="json-key">runs[].todos[]</span></span>
+          <button class="info-button" type="button" aria-label="Explain Todo Feed" aria-expanded="false" aria-controls="info-workboard-todo-feed">?</button>
+          <span id="info-workboard-todo-feed" class="info-panel" role="region" aria-hidden="true">
+            <div class="info-panel-section">
+              <div class="info-panel-title">Purpose</div>
+              <div>Show recent action items across all runs in time order.</div>
+            </div>
+            <div class="info-panel-section">
+              <div class="info-panel-title">Inputs</div>
+              <ul>
+                <li>Todo objects <span class="json-key">projects[].tracks[].runs[].todos[]</span>.</li>
+              </ul>
+            </div>
+            <div class="info-panel-section">
+              <div class="info-panel-title">Output / Action</div>
+              <ul>
+                <li>Spot urgent action items and assign owners quickly.</li>
+              </ul>
+            </div>
+            <div class="info-panel-section">
+              <div class="info-panel-title">Failure modes</div>
+              <ul>
+                <li>Todo ordering depends on timestamps that can be missing.</li>
+              </ul>
+            </div>
+            <div class="info-panel-section">
+              <div class="info-panel-title">Future link</div>
+              <div>Human tasking system writes todos into snapshot.</div>
+            </div>
+          </span>
         </span>
       </h2>
-      <h2>Todo Feed</h2>
       <div id="todo-feed" class="todo-feed"></div>
+      <div class="assumptions-box">
+        <h3>Assumptions / Open Questions</h3>
+        <ul>
+          <li>Which todo statuses are valid (open, blocked, done)?</li>
+          <li>Are todos generated by humans or automation?</li>
+        </ul>
+      </div>
     </section>
   </main>
 

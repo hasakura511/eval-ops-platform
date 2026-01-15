@@ -3,86 +3,30 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Control Room · Sandbox</title>
+  <title>Control Room · Archived Sandbox</title>
   <link rel="stylesheet" href="assets/styles.css" />
 </head>
 <body>
   <header class="site-header">
     <div class="brand">
       <span class="brand-title">Control Room</span>
-      <span class="brand-subtitle" id="project-id">—</span>
+      <span class="brand-subtitle">Archived Sandbox</span>
     </div>
     <nav class="nav">
-      <a class="nav-link" href="index.html">Summary</a>
-      <a class="nav-link" href="executive.html">Executive</a>
-      <a class="nav-link" href="inspectorate.html">Inspectorate</a>
-      <a class="nav-link" href="records.html">Records</a>
-      <a class="nav-link" href="operations.html">Operations</a>
-      <a class="nav-link active" href="sandbox.html">Sandbox</a>
-      <a class="nav-link" href="docs.html">Docs</a>
+      <a class="nav-link" href="workboard.html">Workboard</a>
+      <a class="nav-link" href="hierarchy.html">Hierarchy</a>
     </nav>
   </header>
 
   <main class="layout">
     <section class="panel">
-      <div class="panel-header">
-        <h1>
-          <span class="info-wrap">Sandbox
-            <button class="info-button" type="button" aria-label="About Sandbox" aria-describedby="info-sandbox-title">?</button>
-            <span id="info-sandbox-title" role="tooltip" class="info-tooltip">Experimental containment zone for high-risk changes. Tracks whether the sandbox is active.</span>
-          </span>
-        </h1>
-        <div class="status">
-          <span class="info-wrap">Global Status
-            <button class="info-button" type="button" aria-label="About Global Status" aria-describedby="info-sandbox-global-status">?</button>
-            <span id="info-sandbox-global-status" role="tooltip" class="info-tooltip">Overall system status classification. Colors indicate nominal, warning, or critical states.</span>
-          </span>
-          <span id="status-beacon" class="status-beacon">&nbsp;</span>
-          <span id="global-status">—</span>
-        </div>
+      <div class="archive-banner">
+        <h1>Archived: Sandbox</h1>
+        <p>This page is archived in the v1 UI-first explainable prototype.</p>
+        <p>Use the active planning screens instead:</p>
+        <p><a href="workboard.html">Workboard</a> · <a href="hierarchy.html">Hierarchy</a></p>
       </div>
-      <div class="meta-grid">
-        <div>
-          <h3>
-            <span class="info-wrap">Time
-              <button class="info-button" type="button" aria-label="About Time" aria-describedby="info-sandbox-time">?</button>
-              <span id="info-sandbox-time" role="tooltip" class="info-tooltip">Timestamp of the current telemetry snapshot (ISO-8601).</span>
-            </span>
-          </h3>
-          <p id="meta-time">—</p>
-        </div>
-        <div>
-          <h3>
-            <span class="info-wrap">Sandbox Status
-              <button class="info-button" type="button" aria-label="About Sandbox Status" aria-describedby="info-sandbox-status">?</button>
-              <span id="info-sandbox-status" role="tooltip" class="info-tooltip">Whether the sandbox is active. Active means outputs are isolated from production.</span>
-            </span>
-          </h3>
-          <p id="sandbox-status">—</p>
-        </div>
-        <div>
-          <h3>
-            <span class="info-wrap">Jurisdiction
-              <button class="info-button" type="button" aria-label="About Jurisdiction" aria-describedby="info-sandbox-jurisdiction">?</button>
-              <span id="info-sandbox-jurisdiction" role="tooltip" class="info-tooltip">Scope of systems or domains covered by the sandbox.</span>
-            </span>
-          </h3>
-          <p id="sandbox-jurisdiction">—</p>
-        </div>
-      </div>
-    </section>
-
-    <section class="panel">
-      <h2>
-        <span class="info-wrap">Decontamination Gate
-          <button class="info-button" type="button" aria-label="About Decontamination Gate" aria-describedby="info-sandbox-gate">?</button>
-          <span id="info-sandbox-gate" role="tooltip" class="info-tooltip">Checkpoint for artifacts leaving the sandbox. TODO: define pass/fail criteria once telemetry is wired.</span>
-        </span>
-      </h2>
-      <p class="callout">Artifacts attempting to exit the sandbox will appear here once wired to telemetry.</p>
     </section>
   </main>
-
-  <script src="assets/app.js"></script>
 </body>
 </html>

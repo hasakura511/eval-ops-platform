@@ -3,179 +3,30 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Control Room · Executive Summary</title>
+  <title>Control Room · Archived Summary</title>
   <link rel="stylesheet" href="assets/styles.css" />
 </head>
 <body>
   <header class="site-header">
     <div class="brand">
       <span class="brand-title">Control Room</span>
-      <span class="brand-subtitle" id="project-id">—</span>
+      <span class="brand-subtitle">Archived Summary</span>
     </div>
     <nav class="nav">
-      <a class="nav-link active" href="index.html">Summary</a>
-      <a class="nav-link" href="executive.html">Executive</a>
-      <a class="nav-link" href="inspectorate.html">Inspectorate</a>
-      <a class="nav-link" href="records.html">Records</a>
-      <a class="nav-link" href="operations.html">Operations</a>
-      <a class="nav-link" href="sandbox.html">Sandbox</a>
-      <a class="nav-link" href="docs.html">Docs</a>
+      <a class="nav-link" href="workboard.html">Workboard</a>
+      <a class="nav-link" href="hierarchy.html">Hierarchy</a>
     </nav>
   </header>
 
   <main class="layout">
     <section class="panel">
-      <div class="panel-header">
-        <h1>
-          <span class="info-wrap">Executive Summary
-            <button class="info-button" type="button" aria-label="About Executive Summary" aria-describedby="info-summary-title">?</button>
-            <span id="info-summary-title" role="tooltip" class="info-tooltip">Top-line health snapshot for governance triage. Summarizes status, timeline, Goodhart signals, and record links to anchor decisions.</span>
-          </span>
-        </h1>
-        <div class="status">
-          <span class="info-wrap">Global Status
-            <button class="info-button" type="button" aria-label="About Global Status" aria-describedby="info-summary-global-status">?</button>
-            <span id="info-summary-global-status" role="tooltip" class="info-tooltip">Overall system status classification. Colors indicate nominal, warning, or critical states.</span>
-          </span>
-          <span id="status-beacon" class="status-beacon">&nbsp;</span>
-          <span id="global-status">—</span>
-        </div>
-      </div>
-      <div class="meta-grid">
-        <div>
-          <h3>
-            <span class="info-wrap">Time
-              <button class="info-button" type="button" aria-label="About Time" aria-describedby="info-summary-time">?</button>
-              <span id="info-summary-time" role="tooltip" class="info-tooltip">Timestamp for the current telemetry snapshot (ISO-8601). Use to verify freshness and sequence.</span>
-            </span>
-          </h3>
-          <p id="meta-time">—</p>
-        </div>
-        <div>
-          <h3>
-            <span class="info-wrap">Iteration
-              <button class="info-button" type="button" aria-label="About Iteration" aria-describedby="info-summary-iteration">?</button>
-              <span id="info-summary-iteration" role="tooltip" class="info-tooltip">Monotonic step counter for the governance loop. Higher means a newer evaluation cycle.</span>
-            </span>
-          </h3>
-          <p id="meta-t">—</p>
-        </div>
-        <div>
-          <h3>
-            <span class="info-wrap">Command
-              <button class="info-button" type="button" aria-label="About Command" aria-describedby="info-summary-command">?</button>
-              <span id="info-summary-command" role="tooltip" class="info-tooltip">Most recent control-plane action (e.g., FREEZE, HALT). Indicates the latest governance intervention.</span>
-            </span>
-          </h3>
-          <p id="last-command">—</p>
-        </div>
-      </div>
-      <div class="scrubber">
-        <label for="time-scrubber">
-          <span class="info-wrap">Time Scrubber
-            <button class="info-button" type="button" aria-label="About Time Scrubber" aria-describedby="info-summary-scrubber">?</button>
-            <span id="info-summary-scrubber" role="tooltip" class="info-tooltip">Switch between historical snapshots to compare past states. Uses pre-generated history files.</span>
-          </span>
-        </label>
-        <select id="time-scrubber"></select>
-      </div>
-    </section>
-
-    <section class="grid two">
-      <div class="panel">
-        <h2>
-          <span class="info-wrap">Admin Ratio
-            <button class="info-button" type="button" aria-label="About Admin Ratio" aria-describedby="info-summary-adminratio">?</button>
-            <span id="info-summary-adminratio" role="tooltip" class="info-tooltip">Share of governance overhead relative to work output. Higher values indicate more process cost; exceeding β triggers warnings.</span>
-          </span>
-        </h2>
-        <div class="metric">
-          <span class="metric-label">
-            <span class="info-wrap">AdminRatio
-              <button class="info-button" type="button" aria-label="About AdminRatio" aria-describedby="info-summary-adminratio-metric">?</button>
-              <span id="info-summary-adminratio-metric" role="tooltip" class="info-tooltip">Computed overhead ratio for governance activity. Lower is better; compare against β.</span>
-            </span>
-          </span>
-          <span id="admin-ratio" class="metric-value">—</span>
-        </div>
-        <div class="metric">
-          <span class="metric-label">
-            <span class="info-wrap">Beta
-              <button class="info-button" type="button" aria-label="About Beta" aria-describedby="info-summary-beta">?</button>
-              <span id="info-summary-beta" role="tooltip" class="info-tooltip">Process budget threshold (β). If AdminRatio exceeds β, the system signals deregulation.</span>
-            </span>
-          </span>
-          <span id="beta" class="metric-value">—</span>
-        </div>
-        <p id="admin-ratio-status" class="callout">—</p>
-      </div>
-      <div class="panel">
-        <h2>
-          <span class="info-wrap">Goodhart Signals
-            <button class="info-button" type="button" aria-label="About Goodhart Signals" aria-describedby="info-summary-goodhart">?</button>
-            <span id="info-summary-goodhart" role="tooltip" class="info-tooltip">Audit indicators that detect metric gaming. Higher drift or disagreement suggests misalignment and requires review.</span>
-          </span>
-        </h2>
-        <div class="metric">
-          <span class="metric-label">
-            <span class="info-wrap">Drift
-              <button class="info-button" type="button" aria-label="About Drift" aria-describedby="info-summary-drift">?</button>
-              <span id="info-summary-drift" role="tooltip" class="info-tooltip">Difference between primary and audit metrics over the window. Higher drift is worse and indicates Goodhart pressure.</span>
-            </span>
-          </span>
-          <span id="goodhart-drift" class="metric-value">—</span>
-        </div>
-        <div class="metric">
-          <span class="metric-label">
-            <span class="info-wrap">Disagreement
-              <button class="info-button" type="button" aria-label="About Disagreement" aria-describedby="info-summary-disagreement">?</button>
-              <span id="info-summary-disagreement" role="tooltip" class="info-tooltip">Rate at which audits disagree with primary evaluations. Higher disagreement is worse; units are proportion of audited samples.</span>
-            </span>
-          </span>
-          <span id="goodhart-disagreement" class="metric-value">—</span>
-        </div>
-      </div>
-    </section>
-
-    <section class="grid two">
-      <div class="panel">
-        <h2>
-          <span class="info-wrap">Alerts
-            <button class="info-button" type="button" aria-label="About Alerts" aria-describedby="info-summary-alerts">?</button>
-            <span id="info-summary-alerts" role="tooltip" class="info-tooltip">System notices requiring attention (e.g., audit failures, policy breaches). Severity is shown in each alert body.</span>
-          </span>
-        </h2>
-        <ul id="alerts-list" class="list"></ul>
-      </div>
-      <div class="panel">
-        <h2>
-          <span class="info-wrap">Records Links
-            <button class="info-button" type="button" aria-label="About Records Links" aria-describedby="info-summary-records">?</button>
-            <span id="info-summary-records" role="tooltip" class="info-tooltip">Pointers into immutable records: ledger head and provenance graph for traceability.</span>
-          </span>
-        </h2>
-        <div class="metric">
-          <span class="metric-label">
-            <span class="info-wrap">Ledger Head
-              <button class="info-button" type="button" aria-label="About Ledger Head" aria-describedby="info-summary-ledger">?</button>
-              <span id="info-summary-ledger" role="tooltip" class="info-tooltip">Latest append-only ledger hash for the current iteration. Use to audit record continuity.</span>
-            </span>
-          </span>
-          <a id="ledger-head" class="metric-value" href="#">—</a>
-        </div>
-        <div class="metric">
-          <span class="metric-label">
-            <span class="info-wrap">Provenance
-              <button class="info-button" type="button" aria-label="About Provenance" aria-describedby="info-summary-provenance">?</button>
-              <span id="info-summary-provenance" role="tooltip" class="info-tooltip">Reference to the provenance graph artifact. Shows how inputs, units, audits, and decisions connect.</span>
-            </span>
-          </span>
-          <a id="provenance-ref" class="metric-value" href="#">—</a>
-        </div>
+      <div class="archive-banner">
+        <h1>Archived: Summary</h1>
+        <p>This page is archived in the v1 UI-first explainable prototype.</p>
+        <p>Use the active planning screens instead:</p>
+        <p><a href="workboard.html">Workboard</a> · <a href="hierarchy.html">Hierarchy</a></p>
       </div>
     </section>
   </main>
-
-  <script src="assets/app.js"></script>
 </body>
 </html>

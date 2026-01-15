@@ -15,9 +15,6 @@
     <nav class="nav">
       <a class="nav-link" href="workboard.html">Workboard</a>
       <a class="nav-link active" href="hierarchy.html">Hierarchy</a>
-      <a class="nav-link" href="index.html">Summary</a>
-      <a class="nav-link" href="operations.html">Operations</a>
-      <a class="nav-link" href="records.html">Records</a>
     </nav>
   </header>
 
@@ -25,107 +22,379 @@
     <section class="panel hierarchy-header">
       <div class="panel-header">
         <h1>
-          <span class="info-wrap">Ownership Graph
-            <button class="info-button" type="button" aria-label="About Ownership Graph" aria-describedby="info-hierarchy-title">?</button>
-            <span id="info-hierarchy-title" role="tooltip" class="info-tooltip">Ultra-wide hierarchy view showing projects → tracks → runs → agents → todos.</span>
+          <span class="info-wrap">
+            <span class="info-label">Ownership Graph <span class="json-key">projects[]</span></span>
+            <button class="info-button" type="button" aria-label="Explain Ownership Graph" aria-expanded="false" aria-controls="info-hierarchy-title">?</button>
+            <span id="info-hierarchy-title" class="info-panel" role="region" aria-hidden="true">
+              <div class="info-panel-section">
+                <div class="info-panel-title">Purpose</div>
+                <div>Ultra-wide view to map ownership from project → track → run → agent → todo.</div>
+              </div>
+              <div class="info-panel-section">
+                <div class="info-panel-title">Inputs</div>
+                <ul>
+                  <li>Projects, tracks, runs, owners, todos <span class="json-key">projects[].tracks[].runs[]</span>.</li>
+                </ul>
+              </div>
+              <div class="info-panel-section">
+                <div class="info-panel-title">Output / Action</div>
+                <ul>
+                  <li>Decide who owns each run and where bottlenecks sit.</li>
+                </ul>
+              </div>
+              <div class="info-panel-section">
+                <div class="info-panel-title">Failure modes</div>
+                <ul>
+                  <li>Missing owner fields create gaps in the chain.</li>
+                </ul>
+              </div>
+              <div class="info-panel-section">
+                <div class="info-panel-title">Future link</div>
+                <div>Human staffing + runner pipeline populate the hierarchy.</div>
+              </div>
+            </span>
           </span>
         </h1>
         <div class="status">
-          <span class="info-wrap">Snapshot Status
-            <button class="info-button" type="button" aria-label="About Snapshot Status" aria-describedby="info-hierarchy-status">?</button>
-            <span id="info-hierarchy-status" role="tooltip" class="info-tooltip">Live indicates the snapshot loaded successfully. Offline means the poller failed.</span>
+          <span class="info-wrap">
+            <span class="info-label">Snapshot Status <span class="json-key">client.poller</span></span>
+            <button class="info-button" type="button" aria-label="Explain Snapshot Status" aria-expanded="false" aria-controls="info-hierarchy-status">?</button>
+            <span id="info-hierarchy-status" class="info-panel" role="region" aria-hidden="true">
+              <div class="info-panel-section">
+                <div class="info-panel-title">Purpose</div>
+                <div>Signal whether the browser successfully loaded the snapshot.</div>
+              </div>
+              <div class="info-panel-section">
+                <div class="info-panel-title">Inputs</div>
+                <ul>
+                  <li>Client fetch success (not from snapshot).</li>
+                </ul>
+              </div>
+              <div class="info-panel-section">
+                <div class="info-panel-title">Output / Action</div>
+                <ul>
+                  <li>Reload or check the static server if offline.</li>
+                </ul>
+              </div>
+              <div class="info-panel-section">
+                <div class="info-panel-title">Failure modes</div>
+                <ul>
+                  <li>Local network failures mimic system outages.</li>
+                </ul>
+              </div>
+              <div class="info-panel-section">
+                <div class="info-panel-title">Future link</div>
+                <div>Client-side polling status only.</div>
+              </div>
+            </span>
           </span>
-        <h1>Ownership Graph</h1>
-        <div class="status">
           <span class="status-pill" id="snapshot-status">—</span>
         </div>
       </div>
       <div class="meta-grid">
         <div>
           <h3>
-            <span class="info-wrap">As of
-              <button class="info-button" type="button" aria-label="About As of" aria-describedby="info-hierarchy-asof">?</button>
-              <span id="info-hierarchy-asof" role="tooltip" class="info-tooltip">Timestamp of the snapshot driving this view (ISO-8601).</span>
+            <span class="info-wrap">
+              <span class="info-label">As of <span class="json-key">as_of</span></span>
+              <button class="info-button" type="button" aria-label="Explain As of" aria-expanded="false" aria-controls="info-hierarchy-asof">?</button>
+              <span id="info-hierarchy-asof" class="info-panel" role="region" aria-hidden="true">
+                <div class="info-panel-section">
+                  <div class="info-panel-title">Purpose</div>
+                  <div>Anchor the hierarchy view to a specific snapshot time.</div>
+                </div>
+                <div class="info-panel-section">
+                  <div class="info-panel-title">Inputs</div>
+                  <ul>
+                    <li>Snapshot timestamp <span class="json-key">as_of</span>.</li>
+                  </ul>
+                </div>
+                <div class="info-panel-section">
+                  <div class="info-panel-title">Output / Action</div>
+                  <ul>
+                    <li>Decide whether this ownership graph is current.</li>
+                  </ul>
+                </div>
+                <div class="info-panel-section">
+                  <div class="info-panel-title">Failure modes</div>
+                  <ul>
+                    <li>Stale timestamps hide recent ownership changes.</li>
+                  </ul>
+                </div>
+                <div class="info-panel-section">
+                  <div class="info-panel-title">Future link</div>
+                  <div>Snapshot builder stamps <span class="json-key">as_of</span>.</div>
+                </div>
+              </span>
             </span>
           </h3>
           <p id="snapshot-time">—</p>
         </div>
         <div>
           <h3>
-            <span class="info-wrap">Health
-              <button class="info-button" type="button" aria-label="About Health" aria-describedby="info-hierarchy-health">?</button>
-              <span id="info-hierarchy-health" role="tooltip" class="info-tooltip">Overall data health indicator. TODO: define thresholds and statuses.</span>
+            <span class="info-wrap">
+              <span class="info-label">Health <span class="json-key">health.status</span></span>
+              <button class="info-button" type="button" aria-label="Explain Health" aria-expanded="false" aria-controls="info-hierarchy-health">?</button>
+              <span id="info-hierarchy-health" class="info-panel" role="region" aria-hidden="true">
+                <div class="info-panel-section">
+                  <div class="info-panel-title">Purpose</div>
+                  <div>Quick signal for whether the snapshot is trustworthy.</div>
+                </div>
+                <div class="info-panel-section">
+                  <div class="info-panel-title">Inputs</div>
+                  <ul>
+                    <li>Health status <span class="json-key">health.status</span>.</li>
+                  </ul>
+                </div>
+                <div class="info-panel-section">
+                  <div class="info-panel-title">Output / Action</div>
+                  <ul>
+                    <li>Delay decisions if health is degraded.</li>
+                  </ul>
+                </div>
+                <div class="info-panel-section">
+                  <div class="info-panel-title">Failure modes</div>
+                  <ul>
+                    <li>Status thresholds are not defined yet.</li>
+                  </ul>
+                </div>
+                <div class="info-panel-section">
+                  <div class="info-panel-title">Future link</div>
+                  <div>Snapshot validator computes health.</div>
+                </div>
+              </span>
             </span>
           </h3>
           <p id="snapshot-health">—</p>
         </div>
         <div>
           <h3>
-            <span class="info-wrap">Freshness
-              <button class="info-button" type="button" aria-label="About Freshness" aria-describedby="info-hierarchy-freshness">?</button>
-              <span id="info-hierarchy-freshness" role="tooltip" class="info-tooltip">Age of the snapshot in seconds. Lower values indicate fresher data.</span>
+            <span class="info-wrap">
+              <span class="info-label">Freshness <span class="json-key">health.data_freshness_seconds</span></span>
+              <button class="info-button" type="button" aria-label="Explain Freshness" aria-expanded="false" aria-controls="info-hierarchy-freshness">?</button>
+              <span id="info-hierarchy-freshness" class="info-panel" role="region" aria-hidden="true">
+                <div class="info-panel-section">
+                  <div class="info-panel-title">Purpose</div>
+                  <div>Gauge how old the snapshot is.</div>
+                </div>
+                <div class="info-panel-section">
+                  <div class="info-panel-title">Inputs</div>
+                  <ul>
+                    <li>Seconds since refresh <span class="json-key">health.data_freshness_seconds</span>.</li>
+                  </ul>
+                </div>
+                <div class="info-panel-section">
+                  <div class="info-panel-title">Output / Action</div>
+                  <ul>
+                    <li>Refresh the view if freshness is high.</li>
+                  </ul>
+                </div>
+                <div class="info-panel-section">
+                  <div class="info-panel-title">Failure modes</div>
+                  <ul>
+                    <li>Clock skew can misreport freshness.</li>
+                  </ul>
+                </div>
+                <div class="info-panel-section">
+                  <div class="info-panel-title">Future link</div>
+                  <div>Snapshot builder computes freshness.</div>
+                </div>
+              </span>
             </span>
           </h3>
           <p id="snapshot-freshness">—</p>
         </div>
         <div>
           <h3>
-            <span class="info-wrap">Alerts
-              <button class="info-button" type="button" aria-label="About Alerts count" aria-describedby="info-hierarchy-alerts">?</button>
-              <span id="info-hierarchy-alerts" role="tooltip" class="info-tooltip">Number of active alerts in the current snapshot.</span>
+            <span class="info-wrap">
+              <span class="info-label">Alerts <span class="json-key">health.active_alerts_count</span></span>
+              <button class="info-button" type="button" aria-label="Explain Alerts" aria-expanded="false" aria-controls="info-hierarchy-alerts">?</button>
+              <span id="info-hierarchy-alerts" class="info-panel" role="region" aria-hidden="true">
+                <div class="info-panel-section">
+                  <div class="info-panel-title">Purpose</div>
+                  <div>Quantify the number of active alerts system-wide.</div>
+                </div>
+                <div class="info-panel-section">
+                  <div class="info-panel-title">Inputs</div>
+                  <ul>
+                    <li>Alert count <span class="json-key">health.active_alerts_count</span>.</li>
+                  </ul>
+                </div>
+                <div class="info-panel-section">
+                  <div class="info-panel-title">Output / Action</div>
+                  <ul>
+                    <li>Scan the alerts rail when counts spike.</li>
+                  </ul>
+                </div>
+                <div class="info-panel-section">
+                  <div class="info-panel-title">Failure modes</div>
+                  <ul>
+                    <li>Count hides severity distribution.</li>
+                  </ul>
+                </div>
+                <div class="info-panel-section">
+                  <div class="info-panel-title">Future link</div>
+                  <div>Alerting system writes alerts into snapshot.</div>
+                </div>
+              </span>
             </span>
           </h3>
-          <h3>As of</h3>
-          <p id="snapshot-time">—</p>
-        </div>
-        <div>
-          <h3>Health</h3>
-          <p id="snapshot-health">—</p>
-        </div>
-        <div>
-          <h3>Freshness</h3>
-          <p id="snapshot-freshness">—</p>
-        </div>
-        <div>
-          <h3>Alerts</h3>
           <p id="snapshot-alerts">—</p>
         </div>
+      </div>
+      <div class="toggle-row">
+        <label><input id="toggle-json-keys" type="checkbox" /> Show JSON keys</label>
+      </div>
+      <div class="reasoning-block">
+        <h2>Why this screen exists</h2>
+        <p>Two-monitor intent: ultrawide shows hierarchy/ownership (this screen), while portrait shows the triage list.</p>
+        <p><strong>Learn in 10 seconds:</strong> where bottlenecks sit and who owns each run.</p>
+        <p><strong>Next action:</strong> select a run node, open its detail, and route work to the right owner.</p>
+      </div>
+      <div class="assumptions-box">
+        <h3>Assumptions / Open Questions</h3>
+        <ul>
+          <li>Do we always have a single owner per run?</li>
+          <li>Should agent status be separate from run status?</li>
+          <li>How should multi-owner or on-call rotations appear?</li>
+        </ul>
       </div>
     </section>
 
     <section class="panel hierarchy-tree">
       <h2>
-        <span class="info-wrap">Project → Track → Run → Agent → Todo
-          <button class="info-button" type="button" aria-label="About Hierarchy Tree" aria-describedby="info-hierarchy-tree">?</button>
-          <span id="info-hierarchy-tree" role="tooltip" class="info-tooltip">Hierarchy of ownership and execution. Click nodes to inspect details and artifacts.</span>
+        <span class="info-wrap">
+          <span class="info-label">Project → Track → Run → Agent → Todo <span class="json-key">projects[].tracks[].runs[].todos[]</span></span>
+          <button class="info-button" type="button" aria-label="Explain Hierarchy Tree" aria-expanded="false" aria-controls="info-hierarchy-tree">?</button>
+          <span id="info-hierarchy-tree" class="info-panel" role="region" aria-hidden="true">
+            <div class="info-panel-section">
+              <div class="info-panel-title">Purpose</div>
+              <div>Show the ownership chain from project down to individual tasks.</div>
+            </div>
+            <div class="info-panel-section">
+              <div class="info-panel-title">Inputs</div>
+              <ul>
+                <li>Projects, tracks, runs, owners, todos <span class="json-key">projects[].tracks[].runs[]</span>.</li>
+              </ul>
+            </div>
+            <div class="info-panel-section">
+              <div class="info-panel-title">Output / Action</div>
+              <ul>
+                <li>Select a node to inspect details and artifacts.</li>
+              </ul>
+            </div>
+            <div class="info-panel-section">
+              <div class="info-panel-title">Failure modes</div>
+              <ul>
+                <li>Missing relationships break the chain of accountability.</li>
+              </ul>
+            </div>
+            <div class="info-panel-section">
+              <div class="info-panel-title">Future link</div>
+              <div>Ownership graph is built from runner + human systems.</div>
+            </div>
+          </span>
         </span>
       </h2>
-      <h2>Project → Track → Run → Agent → Todo</h2>
       <div id="hierarchy-tree" class="hierarchy-tree-container"></div>
+      <div class="assumptions-box">
+        <h3>Assumptions / Open Questions</h3>
+        <ul>
+          <li>Are todos always nested under a single agent?</li>
+          <li>What is the canonical ordering of tracks and runs?</li>
+        </ul>
+      </div>
     </section>
 
     <section class="panel hierarchy-detail">
       <h2>
-        <span class="info-wrap">Node Detail
-          <button class="info-button" type="button" aria-label="About Node Detail" aria-describedby="info-hierarchy-detail">?</button>
-          <span id="info-hierarchy-detail" role="tooltip" class="info-tooltip">Metadata for the selected node, including IDs, status, and artifact links.</span>
+        <span class="info-wrap">
+          <span class="info-label">Node Detail <span class="json-key">selected.node</span></span>
+          <button class="info-button" type="button" aria-label="Explain Node Detail" aria-expanded="false" aria-controls="info-hierarchy-detail">?</button>
+          <span id="info-hierarchy-detail" class="info-panel" role="region" aria-hidden="true">
+            <div class="info-panel-section">
+              <div class="info-panel-title">Purpose</div>
+              <div>Expose metadata, ids, and artifact links for a selected node.</div>
+            </div>
+            <div class="info-panel-section">
+              <div class="info-panel-title">Inputs</div>
+              <ul>
+                <li>Selected node fields from the snapshot.</li>
+              </ul>
+            </div>
+            <div class="info-panel-section">
+              <div class="info-panel-title">Output / Action</div>
+              <ul>
+                <li>Open artifacts and verify evidence for the node.</li>
+              </ul>
+            </div>
+            <div class="info-panel-section">
+              <div class="info-panel-title">Failure modes</div>
+              <ul>
+                <li>Missing artifact refs weaken traceability.</li>
+              </ul>
+            </div>
+            <div class="info-panel-section">
+              <div class="info-panel-title">Future link</div>
+              <div>Ledger + artifact store provide node artifacts.</div>
+            </div>
+          </span>
         </span>
       </h2>
-      <h2>Node Detail</h2>
       <div id="node-detail" class="detail-panel">
         <div class="empty">Select a node to see details.</div>
+      </div>
+      <div class="assumptions-box">
+        <h3>Assumptions / Open Questions</h3>
+        <ul>
+          <li>Which fields are safe to display without redaction?</li>
+          <li>Do we need per-node decision history?</li>
+        </ul>
       </div>
     </section>
 
     <section class="panel alerts-rail">
       <h2>
-        <span class="info-wrap">Alerts Rail
-          <button class="info-button" type="button" aria-label="About Alerts Rail" aria-describedby="info-hierarchy-alert-rail">?</button>
-          <span id="info-hierarchy-alert-rail" role="tooltip" class="info-tooltip">Recent alerts across all runs, grouped by severity and time.</span>
+        <span class="info-wrap">
+          <span class="info-label">Alerts Rail <span class="json-key">alerts[]</span></span>
+          <button class="info-button" type="button" aria-label="Explain Alerts Rail" aria-expanded="false" aria-controls="info-hierarchy-alert-rail">?</button>
+          <span id="info-hierarchy-alert-rail" class="info-panel" role="region" aria-hidden="true">
+            <div class="info-panel-section">
+              <div class="info-panel-title">Purpose</div>
+              <div>Stream recent alerts so operators can respond quickly.</div>
+            </div>
+            <div class="info-panel-section">
+              <div class="info-panel-title">Inputs</div>
+              <ul>
+                <li>Alert list <span class="json-key">alerts[]</span>.</li>
+              </ul>
+            </div>
+            <div class="info-panel-section">
+              <div class="info-panel-title">Output / Action</div>
+              <ul>
+                <li>Open affected runs and verify evidence.</li>
+              </ul>
+            </div>
+            <div class="info-panel-section">
+              <div class="info-panel-title">Failure modes</div>
+              <ul>
+                <li>Alerts without run ids break traceability.</li>
+              </ul>
+            </div>
+            <div class="info-panel-section">
+              <div class="info-panel-title">Future link</div>
+              <div>Alerting subsystem writes alerts into snapshot.</div>
+            </div>
+          </span>
         </span>
       </h2>
-      <h2>Alerts Rail</h2>
       <div id="alerts-rail" class="alerts-rail-body"></div>
+      <div class="assumptions-box">
+        <h3>Assumptions / Open Questions</h3>
+        <ul>
+          <li>Should alerts be grouped by run or by severity first?</li>
+          <li>What is the maximum alert volume before paging?</li>
+        </ul>
+      </div>
     </section>
   </main>
 
