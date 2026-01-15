@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Control Room · Hierarchy</title>
+  <link rel="stylesheet" href="assets/styles.css" />
+</head>
+<body class="ultrawide">
+  <header class="site-header">
+    <div class="brand">
+      <span class="brand-title">Control Room</span>
+      <span class="brand-subtitle">Hierarchy</span>
+    </div>
+    <nav class="nav">
+      <a class="nav-link" href="workboard.html">Workboard</a>
+      <a class="nav-link active" href="hierarchy.html">Hierarchy</a>
+      <a class="nav-link" href="index.html">Summary</a>
+      <a class="nav-link" href="operations.html">Operations</a>
+      <a class="nav-link" href="records.html">Records</a>
+    </nav>
+  </header>
+
+  <main class="layout hierarchy-layout">
+    <section class="panel hierarchy-header">
+      <div class="panel-header">
+        <h1>Ownership Graph</h1>
+        <div class="status">
+          <span class="status-pill" id="snapshot-status">—</span>
+        </div>
+      </div>
+      <div class="meta-grid">
+        <div>
+          <h3>As of</h3>
+          <p id="snapshot-time">—</p>
+        </div>
+        <div>
+          <h3>Health</h3>
+          <p id="snapshot-health">—</p>
+        </div>
+        <div>
+          <h3>Freshness</h3>
+          <p id="snapshot-freshness">—</p>
+        </div>
+        <div>
+          <h3>Alerts</h3>
+          <p id="snapshot-alerts">—</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel hierarchy-tree">
+      <h2>Project → Track → Run → Agent → Todo</h2>
+      <div id="hierarchy-tree" class="hierarchy-tree-container"></div>
+    </section>
+
+    <section class="panel hierarchy-detail">
+      <h2>Node Detail</h2>
+      <div id="node-detail" class="detail-panel">
+        <div class="empty">Select a node to see details.</div>
+      </div>
+    </section>
+
+    <section class="panel alerts-rail">
+      <h2>Alerts Rail</h2>
+      <div id="alerts-rail" class="alerts-rail-body"></div>
+    </section>
+  </main>
+
+  <script src="assets/control_room.js"></script>
+</body>
+</html>
