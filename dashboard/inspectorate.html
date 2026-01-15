@@ -26,23 +26,47 @@
   <main class="layout">
     <section class="panel">
       <div class="panel-header">
-        <h1>Inspectorate</h1>
+        <h1>
+          <span class="info-wrap">Inspectorate
+            <button class="info-button" type="button" aria-label="About Inspectorate" aria-describedby="info-inspectorate-title">?</button>
+            <span id="info-inspectorate-title" role="tooltip" class="info-tooltip">Audit-focused view for detecting Goodhart effects and evaluation drift. Highlights discrepancies and alerts.</span>
+          </span>
+        </h1>
         <div class="status">
+          <span class="info-wrap">Global Status
+            <button class="info-button" type="button" aria-label="About Global Status" aria-describedby="info-inspectorate-global-status">?</button>
+            <span id="info-inspectorate-global-status" role="tooltip" class="info-tooltip">Overall system status classification. Colors indicate nominal, warning, or critical states.</span>
+          </span>
           <span id="status-beacon" class="status-beacon">&nbsp;</span>
           <span id="global-status">—</span>
         </div>
       </div>
       <div class="meta-grid">
         <div>
-          <h3>Time</h3>
+          <h3>
+            <span class="info-wrap">Time
+              <button class="info-button" type="button" aria-label="About Time" aria-describedby="info-inspectorate-time">?</button>
+              <span id="info-inspectorate-time" role="tooltip" class="info-tooltip">Timestamp of the current telemetry snapshot (ISO-8601).</span>
+            </span>
+          </h3>
           <p id="meta-time">—</p>
         </div>
         <div>
-          <h3>Iteration</h3>
+          <h3>
+            <span class="info-wrap">Iteration
+              <button class="info-button" type="button" aria-label="About Iteration" aria-describedby="info-inspectorate-iteration">?</button>
+              <span id="info-inspectorate-iteration" role="tooltip" class="info-tooltip">Current governance loop step. Higher values indicate more recent cycles.</span>
+            </span>
+          </h3>
           <p id="meta-t">—</p>
         </div>
         <div>
-          <h3>Audit Status</h3>
+          <h3>
+            <span class="info-wrap">Audit Status
+              <button class="info-button" type="button" aria-label="About Audit Status" aria-describedby="info-inspectorate-audit-status">?</button>
+              <span id="info-inspectorate-audit-status" role="tooltip" class="info-tooltip">Overall audit pass/fail outcome for the latest iteration. Failure requires investigation.</span>
+            </span>
+          </h3>
           <p id="audit-status">—</p>
         </div>
       </div>
@@ -50,22 +74,47 @@
 
     <section class="grid two">
       <div class="panel">
-        <h2>Goodhart Drift</h2>
+        <h2>
+          <span class="info-wrap">Goodhart Drift
+            <button class="info-button" type="button" aria-label="About Goodhart Drift" aria-describedby="info-inspectorate-goodhart">?</button>
+            <span id="info-inspectorate-goodhart" role="tooltip" class="info-tooltip">Measures how optimization on a proxy metric diverges from true objectives. Higher values indicate worse misalignment.</span>
+          </span>
+        </h2>
         <div class="metric">
-          <span class="metric-label">Drift Score</span>
+          <span class="metric-label">
+            <span class="info-wrap">Drift Score
+              <button class="info-button" type="button" aria-label="About Drift Score" aria-describedby="info-inspectorate-drift-score">?</button>
+              <span id="info-inspectorate-drift-score" role="tooltip" class="info-tooltip">Difference between audit and primary metrics over a sliding window. Higher is worse.</span>
+            </span>
+          </span>
           <span id="goodhart-drift" class="metric-value">—</span>
         </div>
         <div class="metric">
-          <span class="metric-label">Disagreement Rate</span>
+          <span class="metric-label">
+            <span class="info-wrap">Disagreement Rate
+              <button class="info-button" type="button" aria-label="About Disagreement Rate" aria-describedby="info-inspectorate-disagreement">?</button>
+              <span id="info-inspectorate-disagreement" role="tooltip" class="info-tooltip">Fraction of audited samples that conflict with primary evaluations. Higher indicates instability.</span>
+            </span>
+          </span>
           <span id="goodhart-disagreement" class="metric-value">—</span>
         </div>
         <div class="metric">
-          <span class="metric-label">Rotation Countdown</span>
+          <span class="metric-label">
+            <span class="info-wrap">Rotation Countdown
+              <button class="info-button" type="button" aria-label="About Rotation Countdown" aria-describedby="info-inspectorate-rotation">?</button>
+              <span id="info-inspectorate-rotation" role="tooltip" class="info-tooltip">Ticks until the next metric rotation. Rotations reduce Goodhart pressure by changing incentives.</span>
+            </span>
+          </span>
           <span id="rotation-countdown" class="metric-value">—</span>
         </div>
       </div>
       <div class="panel">
-        <h2>Alerts Feed</h2>
+        <h2>
+          <span class="info-wrap">Alerts Feed
+            <button class="info-button" type="button" aria-label="About Alerts Feed" aria-describedby="info-inspectorate-alerts">?</button>
+            <span id="info-inspectorate-alerts" role="tooltip" class="info-tooltip">Recent audit or policy alerts. Review items with high severity first.</span>
+          </span>
+        </h2>
         <ul id="alerts-list" class="list"></ul>
       </div>
     </section>

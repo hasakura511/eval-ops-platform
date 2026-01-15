@@ -24,6 +24,17 @@
   <main class="layout hierarchy-layout">
     <section class="panel hierarchy-header">
       <div class="panel-header">
+        <h1>
+          <span class="info-wrap">Ownership Graph
+            <button class="info-button" type="button" aria-label="About Ownership Graph" aria-describedby="info-hierarchy-title">?</button>
+            <span id="info-hierarchy-title" role="tooltip" class="info-tooltip">Ultra-wide hierarchy view showing projects → tracks → runs → agents → todos.</span>
+          </span>
+        </h1>
+        <div class="status">
+          <span class="info-wrap">Snapshot Status
+            <button class="info-button" type="button" aria-label="About Snapshot Status" aria-describedby="info-hierarchy-status">?</button>
+            <span id="info-hierarchy-status" role="tooltip" class="info-tooltip">Live indicates the snapshot loaded successfully. Offline means the poller failed.</span>
+          </span>
         <h1>Ownership Graph</h1>
         <div class="status">
           <span class="status-pill" id="snapshot-status">—</span>
@@ -31,6 +42,39 @@
       </div>
       <div class="meta-grid">
         <div>
+          <h3>
+            <span class="info-wrap">As of
+              <button class="info-button" type="button" aria-label="About As of" aria-describedby="info-hierarchy-asof">?</button>
+              <span id="info-hierarchy-asof" role="tooltip" class="info-tooltip">Timestamp of the snapshot driving this view (ISO-8601).</span>
+            </span>
+          </h3>
+          <p id="snapshot-time">—</p>
+        </div>
+        <div>
+          <h3>
+            <span class="info-wrap">Health
+              <button class="info-button" type="button" aria-label="About Health" aria-describedby="info-hierarchy-health">?</button>
+              <span id="info-hierarchy-health" role="tooltip" class="info-tooltip">Overall data health indicator. TODO: define thresholds and statuses.</span>
+            </span>
+          </h3>
+          <p id="snapshot-health">—</p>
+        </div>
+        <div>
+          <h3>
+            <span class="info-wrap">Freshness
+              <button class="info-button" type="button" aria-label="About Freshness" aria-describedby="info-hierarchy-freshness">?</button>
+              <span id="info-hierarchy-freshness" role="tooltip" class="info-tooltip">Age of the snapshot in seconds. Lower values indicate fresher data.</span>
+            </span>
+          </h3>
+          <p id="snapshot-freshness">—</p>
+        </div>
+        <div>
+          <h3>
+            <span class="info-wrap">Alerts
+              <button class="info-button" type="button" aria-label="About Alerts count" aria-describedby="info-hierarchy-alerts">?</button>
+              <span id="info-hierarchy-alerts" role="tooltip" class="info-tooltip">Number of active alerts in the current snapshot.</span>
+            </span>
+          </h3>
           <h3>As of</h3>
           <p id="snapshot-time">—</p>
         </div>
@@ -50,11 +94,23 @@
     </section>
 
     <section class="panel hierarchy-tree">
+      <h2>
+        <span class="info-wrap">Project → Track → Run → Agent → Todo
+          <button class="info-button" type="button" aria-label="About Hierarchy Tree" aria-describedby="info-hierarchy-tree">?</button>
+          <span id="info-hierarchy-tree" role="tooltip" class="info-tooltip">Hierarchy of ownership and execution. Click nodes to inspect details and artifacts.</span>
+        </span>
+      </h2>
       <h2>Project → Track → Run → Agent → Todo</h2>
       <div id="hierarchy-tree" class="hierarchy-tree-container"></div>
     </section>
 
     <section class="panel hierarchy-detail">
+      <h2>
+        <span class="info-wrap">Node Detail
+          <button class="info-button" type="button" aria-label="About Node Detail" aria-describedby="info-hierarchy-detail">?</button>
+          <span id="info-hierarchy-detail" role="tooltip" class="info-tooltip">Metadata for the selected node, including IDs, status, and artifact links.</span>
+        </span>
+      </h2>
       <h2>Node Detail</h2>
       <div id="node-detail" class="detail-panel">
         <div class="empty">Select a node to see details.</div>
@@ -62,6 +118,12 @@
     </section>
 
     <section class="panel alerts-rail">
+      <h2>
+        <span class="info-wrap">Alerts Rail
+          <button class="info-button" type="button" aria-label="About Alerts Rail" aria-describedby="info-hierarchy-alert-rail">?</button>
+          <span id="info-hierarchy-alert-rail" role="tooltip" class="info-tooltip">Recent alerts across all runs, grouped by severity and time.</span>
+        </span>
+      </h2>
       <h2>Alerts Rail</h2>
       <div id="alerts-rail" class="alerts-rail-body"></div>
     </section>

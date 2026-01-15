@@ -43,6 +43,48 @@ const metricValue = (metric) => {
   return metric.value;
 };
 
+const safeId = (value) =>
+  String(value || "unknown").replace(/[^a-z0-9_-]/gi, "-").toLowerCase();
+
+const infoLabelHtml = (id, label, text) =>
+  `<span class="info-wrap">${label}<button class="info-button" type="button" aria-label="About ${label}" aria-describedby="${id}">?</button><span id="${id}" role="tooltip" class="info-tooltip">${text}</span></span>`;
+
+const closeInfoTooltips = () => {
+  document.querySelectorAll(".info-button.is-open").forEach((button) => {
+    button.classList.remove("is-open");
+    button.setAttribute("aria-expanded", "false");
+  });
+};
+
+const initInfoTooltips = () => {
+  const buttons = document.querySelectorAll(".info-button");
+  if (buttons.length === 0) return;
+  buttons.forEach((button) => {
+    button.setAttribute("aria-expanded", "false");
+    button.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+      const isOpen = button.classList.contains("is-open");
+      closeInfoTooltips();
+      if (!isOpen) {
+        button.classList.add("is-open");
+        button.setAttribute("aria-expanded", "true");
+      }
+    });
+  });
+
+  document.addEventListener("click", () => {
+    closeInfoTooltips();
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      closeInfoTooltips();
+    }
+  });
+};
+
 const fetchSnapshot = async (path) => {
   const response = await fetch(path, { cache: "no-store" });
   if (!response.ok) {
@@ -234,10 +276,38 @@ const renderWorkboard = (snapshot) => {
 
     const statusChip = document.createElement("span");
     setStatusChip(statusChip, run.status);
+    const statusWrap = document.createElement("div");
+    statusWrap.className = "status-chip-group";
+    statusWrap.innerHTML = infoLabelHtml(
+      `info-run-status-${safeId(run.run_id)}`,
+      "Status",
+      "Current run state. Colors: green=running/complete, amber=pending, red=failed/blocked."
+    );
+    statusWrap.appendChild(statusChip);
 
     const meta = document.createElement("div");
     meta.className = "run-meta";
     meta.innerHTML = `
+      <div>${infoLabelHtml(
+        `info-run-owner-${safeId(run.run_id)}`,
+        "Owner",
+        "Primary agent or team responsible for the run."
+      )} ${safeText(run.owner?.display_name)}</div>
+      <div>${infoLabelHtml(
+        `info-run-updated-${safeId(run.run_id)}`,
+        "Updated",
+        "Relative time since the last run update. Lower is fresher."
+      )} ${relativeTime(run.last_update_at)}</div>
+      <div>${infoLabelHtml(
+        `info-run-failures-${safeId(run.run_id)}`,
+        "Failures",
+        "Count of failed checks or tasks within the run."
+      )} ${safeText(run.failure_count, 0)}</div>
+      <div>${infoLabelHtml(
+        `info-run-next-${safeId(run.run_id)}`,
+        "Next",
+        "Suggested next action for triage or execution."
+      )} ${safeText(run.next_action)}</div>
       <div><strong>Owner</strong> ${safeText(run.owner?.display_name)}</div>
       <div><strong>Updated</strong> ${relativeTime(run.last_update_at)}</div>
       <div><strong>Failures</strong> ${safeText(run.failure_count, 0)}</div>
@@ -246,6 +316,15 @@ const renderWorkboard = (snapshot) => {
 
     const metrics = document.createElement("div");
     metrics.className = "chip-row";
+    if (toArray(run.metrics_summary).length > 0) {
+      const metricsLabel = document.createElement("span");
+      metricsLabel.innerHTML = infoLabelHtml(
+        `info-run-metrics-${safeId(run.run_id)}`,
+        "Metrics",
+        "Compact summary values reported for the run. TODO: define each metric and its units."
+      );
+      metrics.appendChild(metricsLabel);
+    }
     toArray(run.metrics_summary).forEach((metric) => {
       const chip = document.createElement("span");
       chip.className = "chip neutral";
@@ -255,6 +334,15 @@ const renderWorkboard = (snapshot) => {
 
     const artifacts = document.createElement("div");
     artifacts.className = "artifact-links";
+    if (toArray(run.artifact_refs).length > 0) {
+      const artifactLabel = document.createElement("span");
+      artifactLabel.innerHTML = infoLabelHtml(
+        `info-run-artifacts-${safeId(run.run_id)}`,
+        "Artifacts",
+        "Evidence or record links associated with this run."
+      );
+      artifacts.appendChild(artifactLabel);
+    }
     toArray(run.artifact_refs).forEach((artifact) => {
       const link = document.createElement("a");
       link.href = artifact.href || "#";
@@ -265,6 +353,11 @@ const renderWorkboard = (snapshot) => {
     const todoDrawer = document.createElement("details");
     todoDrawer.className = "todo-drawer";
     const summary = document.createElement("summary");
+    summary.innerHTML = `${infoLabelHtml(
+      `info-run-todos-${safeId(run.run_id)}`,
+      "Todos",
+      "Action items associated with this run."
+    )} <span class="todo-count">(${toArray(run.todos).length})</span>`;
     summary.textContent = `Todos (${toArray(run.todos).length})`;
     todoDrawer.appendChild(summary);
 
@@ -304,6 +397,7 @@ const renderWorkboard = (snapshot) => {
     todoDrawer.appendChild(todoList);
 
     header.appendChild(title);
+    header.appendChild(statusWrap);
     header.appendChild(statusChip);
 
     card.appendChild(header);
@@ -335,6 +429,15 @@ const renderSpotlight = (snapshot) => {
     return;
   }
 
+    runs.forEach((item) => {
+      const card = document.createElement("div");
+      card.className = "spotlight-card";
+      const failureLabel = infoLabelHtml(
+        `info-spotlight-failures-${safeId(item.run.run_id)}`,
+        "Failures",
+        "Total failed checks for the run. Higher values indicate greater triage urgency."
+      );
+      card.innerHTML = `
   runs.forEach((item) => {
     const card = document.createElement("div");
     card.className = "spotlight-card";
@@ -343,6 +446,12 @@ const renderSpotlight = (snapshot) => {
       <div class="spotlight-meta">${safeText(item.project.name)} · ${safeText(
       item.track.name
     )}</div>
+      <div class="spotlight-meta">${failureLabel} ${safeText(
+      item.run.failure_count
+    )}</div>
+    `;
+      spotlight.appendChild(card);
+    });
       <div class="spotlight-meta">Failures: ${safeText(
       item.run.failure_count
     )}</div>
@@ -405,6 +514,7 @@ const renderHierarchy = (snapshot) => {
   const nodeIndex = new Map();
 
   const createNode = (type, id, label, status, extra) => {
+    const statusId = `info-node-status-${safeId(`${type}-${id}`)}`;
     const node = document.createElement("button");
     node.type = "button";
     node.className = "hierarchy-node";
@@ -412,6 +522,14 @@ const renderHierarchy = (snapshot) => {
     node.innerHTML = `
       <div class="hierarchy-node-header">
         <span class="hierarchy-node-title">${label}</span>
+        <span class="status-chip-group">
+          ${infoLabelHtml(
+            statusId,
+            "Status",
+            "Current node state. Colors map to running (green), pending (amber), failed/blocked (red)."
+          )}
+          <span class="chip status">${safeText(status).toUpperCase()}</span>
+        </span>
         <span class="chip status">${safeText(status).toUpperCase()}</span>
       </div>
       <div class="hierarchy-node-meta">${safeText(extra)}</div>
@@ -569,6 +687,26 @@ const renderAlerts = (snapshot) => {
   alertItems.forEach((alert) => {
     const card = document.createElement("div");
     card.className = "alert-card";
+    const severityId = `info-alert-severity-${safeId(alert.alert_id)}`;
+    const runInfoId = `info-alert-run-${safeId(alert.alert_id)}`;
+    card.innerHTML = `
+      <div class="alert-header">
+        <span class="status-chip-group">
+          ${infoLabelHtml(
+            severityId,
+            "Severity",
+            "Alert impact level. Info = informational, warn = needs attention, error = urgent."
+          )}
+          <span class="chip ${alert.severity}">${safeText(alert.severity)}</span>
+        </span>
+        <span>${relativeTime(alert.timestamp)}</span>
+      </div>
+      <div class="alert-message">${safeText(alert.message)}</div>
+      <div class="alert-meta">${infoLabelHtml(
+        runInfoId,
+        "Run",
+        "Run identifier associated with this alert."
+      )} ${safeText(alert.run_id)}</div>
     card.innerHTML = `
       <div class="alert-header">
         <span class="chip ${alert.severity}">${safeText(alert.severity)}</span>
@@ -598,6 +736,7 @@ const renderSnapshot = (snapshot) => {
   renderTodoFeed(snapshot);
   renderHierarchy(snapshot);
   renderAlerts(snapshot);
+  initInfoTooltips();
 };
 
 const startPolling = (path) => {
@@ -644,6 +783,7 @@ const getSnapshotPath = () => {
 
 const boot = () => {
   initControls();
+  initInfoTooltips();
   startPolling(getSnapshotPath());
 };
 

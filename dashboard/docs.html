@@ -26,17 +26,46 @@
   <main class="layout">
     <section class="panel">
       <div class="panel-header">
-        <h1>Docs & Architecture Dossier</h1>
+        <h1>
+          <span class="info-wrap">Docs & Architecture Dossier
+            <button class="info-button" type="button" aria-label="About Docs & Architecture Dossier" aria-describedby="info-docs-title">?</button>
+            <span id="info-docs-title" role="tooltip" class="info-tooltip">Reference materials that define telemetry fields, governance rules, and UI mappings.</span>
+          </span>
+        </h1>
         <div class="status">
+          <span class="info-wrap">Global Status
+            <button class="info-button" type="button" aria-label="About Global Status" aria-describedby="info-docs-global-status">?</button>
+            <span id="info-docs-global-status" role="tooltip" class="info-tooltip">Overall system status classification. Colors indicate nominal, warning, or critical states.</span>
+          </span>
           <span id="status-beacon" class="status-beacon">&nbsp;</span>
           <span id="global-status">—</span>
         </div>
       </div>
-      <p class="subtitle">Primary governance documents and mapping tables.</p>
+      <p class="subtitle">
+        <span class="info-wrap">Primary governance documents and mapping tables.
+          <button class="info-button" type="button" aria-label="About Document List" aria-describedby="info-docs-list">?</button>
+          <span id="info-docs-list" role="tooltip" class="info-tooltip">Use these sources to interpret metrics, thresholds, and contract fields shown throughout the dashboard.</span>
+        </span>
+      </p>
       <ul class="list">
-        <li><a href="../docs/bureaucracy_spec_v2.1.md">Bureaucratic Autoregression Spec v2.1</a></li>
-        <li><a href="../docs/dashboard_mapping.md">Dashboard Mapping v2.1</a></li>
-        <li><a href="../docs/README.md">Control Room README</a></li>
+        <li>
+          <span class="info-wrap"><a href="../docs/bureaucracy_spec_v2.1.md">Bureaucratic Autoregression Spec v2.1</a>
+            <button class="info-button" type="button" aria-label="About Bureaucratic Autoregression Spec" aria-describedby="info-docs-spec">?</button>
+            <span id="info-docs-spec" role="tooltip" class="info-tooltip">Formal definitions for ledger, audits, Goodhart signals, and governance loop variables.</span>
+          </span>
+        </li>
+        <li>
+          <span class="info-wrap"><a href="../docs/dashboard_mapping.md">Dashboard Mapping v2.1</a>
+            <button class="info-button" type="button" aria-label="About Dashboard Mapping" aria-describedby="info-docs-mapping">?</button>
+            <span id="info-docs-mapping" role="tooltip" class="info-tooltip">Mapping of telemetry fields to specific UI components and derived metrics.</span>
+          </span>
+        </li>
+        <li>
+          <span class="info-wrap"><a href="../docs/README.md">Control Room README</a>
+            <button class="info-button" type="button" aria-label="About Control Room README" aria-describedby="info-docs-readme">?</button>
+            <span id="info-docs-readme" role="tooltip" class="info-tooltip">Operational notes for running the dashboard and generating telemetry snapshots.</span>
+          </span>
+        </li>
       </ul>
     </section>
   </main>

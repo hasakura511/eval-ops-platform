@@ -26,23 +26,47 @@
   <main class="layout">
     <section class="panel">
       <div class="panel-header">
-        <h1>Records Office</h1>
+        <h1>
+          <span class="info-wrap">Records Office
+            <button class="info-button" type="button" aria-label="About Records Office" aria-describedby="info-records-title">?</button>
+            <span id="info-records-title" role="tooltip" class="info-tooltip">Traceability center for immutable logs, provenance, and evidence artifacts.</span>
+          </span>
+        </h1>
         <div class="status">
+          <span class="info-wrap">Global Status
+            <button class="info-button" type="button" aria-label="About Global Status" aria-describedby="info-records-global-status">?</button>
+            <span id="info-records-global-status" role="tooltip" class="info-tooltip">Overall system status classification. Colors indicate nominal, warning, or critical states.</span>
+          </span>
           <span id="status-beacon" class="status-beacon">&nbsp;</span>
           <span id="global-status">—</span>
         </div>
       </div>
       <div class="meta-grid">
         <div>
-          <h3>Time</h3>
+          <h3>
+            <span class="info-wrap">Time
+              <button class="info-button" type="button" aria-label="About Time" aria-describedby="info-records-time">?</button>
+              <span id="info-records-time" role="tooltip" class="info-tooltip">Timestamp of the current snapshot (ISO-8601).</span>
+            </span>
+          </h3>
           <p id="meta-time">—</p>
         </div>
         <div>
-          <h3>Ledger Head</h3>
+          <h3>
+            <span class="info-wrap">Ledger Head
+              <button class="info-button" type="button" aria-label="About Ledger Head" aria-describedby="info-records-ledger">?</button>
+              <span id="info-records-ledger" role="tooltip" class="info-tooltip">Latest append-only ledger hash. Use to verify record continuity and audit trails.</span>
+            </span>
+          </h3>
           <a id="ledger-head" href="#">—</a>
         </div>
         <div>
-          <h3>Provenance Graph</h3>
+          <h3>
+            <span class="info-wrap">Provenance Graph
+              <button class="info-button" type="button" aria-label="About Provenance Graph" aria-describedby="info-records-provenance">?</button>
+              <span id="info-records-provenance" role="tooltip" class="info-tooltip">Artifact link showing the lineage of inputs → units → audits → decisions.</span>
+            </span>
+          </h3>
           <a id="provenance-ref" href="#">—</a>
         </div>
       </div>
@@ -50,22 +74,42 @@
 
     <section class="grid two">
       <div class="panel">
-        <h2>Recent Artifacts</h2>
+        <h2>
+          <span class="info-wrap">Recent Artifacts
+            <button class="info-button" type="button" aria-label="About Recent Artifacts" aria-describedby="info-records-artifacts">?</button>
+            <span id="info-records-artifacts" role="tooltip" class="info-tooltip">Latest evidence items written to the ledger. Use to inspect supporting data.</span>
+          </span>
+        </h2>
         <ul id="recent-artifacts" class="list"></ul>
       </div>
       <div class="panel">
-        <h2>Recent Decisions</h2>
+        <h2>
+          <span class="info-wrap">Recent Decisions
+            <button class="info-button" type="button" aria-label="About Recent Decisions" aria-describedby="info-records-decisions">?</button>
+            <span id="info-records-decisions" role="tooltip" class="info-tooltip">Most recent outcome artifacts. Review for correctness and rationale.</span>
+          </span>
+        </h2>
         <ul id="recent-decisions" class="list"></ul>
       </div>
     </section>
 
     <section class="grid two">
       <div class="panel">
-        <h2>Recent Audits</h2>
+        <h2>
+          <span class="info-wrap">Recent Audits
+            <button class="info-button" type="button" aria-label="About Recent Audits" aria-describedby="info-records-audits">?</button>
+            <span id="info-records-audits" role="tooltip" class="info-tooltip">Audit report artifacts. High severity failures should trigger escalation.</span>
+          </span>
+        </h2>
         <ul id="recent-audits" class="list"></ul>
       </div>
       <div class="panel">
-        <h2>Recent Incidents</h2>
+        <h2>
+          <span class="info-wrap">Recent Incidents
+            <button class="info-button" type="button" aria-label="About Recent Incidents" aria-describedby="info-records-incidents">?</button>
+            <span id="info-records-incidents" role="tooltip" class="info-tooltip">Logged incidents or anomalies. Use to correlate with alerts and audit failures.</span>
+          </span>
+        </h2>
         <ul id="recent-incidents" class="list"></ul>
       </div>
     </section>

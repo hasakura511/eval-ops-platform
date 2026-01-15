@@ -25,6 +25,42 @@ const formatNumber = (value) => {
 
 const byId = (id) => document.getElementById(id);
 
+const closeInfoTooltips = () => {
+  document.querySelectorAll(".info-button.is-open").forEach((button) => {
+    button.classList.remove("is-open");
+    button.setAttribute("aria-expanded", "false");
+  });
+};
+
+const initInfoTooltips = () => {
+  const buttons = document.querySelectorAll(".info-button");
+  if (buttons.length === 0) return;
+  buttons.forEach((button) => {
+    button.setAttribute("aria-expanded", "false");
+    button.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+      const isOpen = button.classList.contains("is-open");
+      closeInfoTooltips();
+      if (!isOpen) {
+        button.classList.add("is-open");
+        button.setAttribute("aria-expanded", "true");
+      }
+    });
+  });
+
+  document.addEventListener("click", () => {
+    closeInfoTooltips();
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      closeInfoTooltips();
+    }
+  });
+};
+
 const setText = (id, value) => {
   const el = byId(id);
   if (el) {
@@ -227,6 +263,7 @@ const initScrubber = () => {
 };
 
 const boot = async () => {
+  initInfoTooltips();
   initScrubber();
   const initialPath = `${stateBasePath}/latest.json`;
   const state = await loadState(initialPath);

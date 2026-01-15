@@ -169,6 +169,63 @@ a:hover {
   font-weight: 600;
 }
 
+.info-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  position: relative;
+}
+
+.info-button {
+  border: 1px solid var(--border);
+  background: #ffffff;
+  color: var(--muted);
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.info-button:focus-visible {
+  outline: 2px solid rgba(47, 111, 237, 0.4);
+  outline-offset: 2px;
+}
+
+.info-tooltip {
+  position: absolute;
+  left: 0;
+  top: 130%;
+  min-width: 220px;
+  max-width: 320px;
+  padding: 0.6rem 0.75rem;
+  background: #1c1f2a;
+  color: #ffffff;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  line-height: 1.3;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-4px);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  z-index: 10;
+}
+
+.info-button:hover + .info-tooltip,
+.info-button:focus + .info-tooltip,
+.info-button:focus-visible + .info-tooltip {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.info-button.is-open + .info-tooltip {
+  opacity: 1;
+  transform: translateY(0);
+}
+
 .metric-value {
   font-weight: 700;
 }
@@ -220,6 +277,15 @@ a:hover {
   border-radius: 8px;
   border: 1px solid var(--border);
   background: #fafbff;
+}
+
+.table-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+  color: var(--muted);
+  font-size: 0.85rem;
 }
 
 .subtitle {
@@ -294,6 +360,14 @@ a:hover {
   justify-content: space-between;
   gap: 1rem;
   align-items: center;
+}
+
+.status-chip-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .run-title {
@@ -380,6 +454,13 @@ a:hover {
   font-size: 0.85rem;
 }
 
+.artifact-links .info-wrap,
+.chip-row .info-wrap,
+.alert-meta .info-wrap {
+  color: var(--muted);
+  font-weight: 600;
+}
+
 .todo-drawer {
   border-top: 1px dashed var(--border);
   padding-top: 0.75rem;
@@ -388,6 +469,11 @@ a:hover {
 .todo-drawer summary {
   font-weight: 700;
   cursor: pointer;
+}
+
+.todo-count {
+  color: var(--muted);
+  font-weight: 600;
 }
 
 .todo-list {
