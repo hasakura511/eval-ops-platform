@@ -35,6 +35,8 @@
             <button class="info-button" type="button" aria-label="About Snapshot Status" aria-describedby="info-workboard-status">?</button>
             <span id="info-workboard-status" role="tooltip" class="info-tooltip">Live indicates the snapshot loaded successfully. Offline means the poller failed.</span>
           </span>
+        <h1>Workboard</h1>
+        <div class="status">
           <span class="status-pill" id="snapshot-status">—</span>
         </div>
       </div>
@@ -73,6 +75,19 @@
               <span id="info-workboard-alerts" role="tooltip" class="info-tooltip">Count of active alerts in the snapshot. High counts require triage.</span>
             </span>
           </h3>
+          <h3>As of</h3>
+          <p id="snapshot-time">—</p>
+        </div>
+        <div>
+          <h3>Health</h3>
+          <p id="snapshot-health">—</p>
+        </div>
+        <div>
+          <h3>Freshness</h3>
+          <p id="snapshot-freshness">—</p>
+        </div>
+        <div>
+          <h3>Alerts</h3>
           <p id="snapshot-alerts">—</p>
         </div>
       </div>
@@ -119,6 +134,26 @@
             <button class="info-button" type="button" aria-label="About Search filter" aria-describedby="info-workboard-filter-search">?</button>
             <span id="info-workboard-filter-search" role="tooltip" class="info-tooltip">Search by run ID, owner name, or next action text.</span>
           </span>
+      <h2>Filters</h2>
+      <div class="filter-grid">
+        <label>
+          Project
+          <select id="filter-project"></select>
+        </label>
+        <label>
+          Track
+          <select id="filter-track"></select>
+        </label>
+        <label>
+          Status
+          <select id="filter-status"></select>
+        </label>
+        <label>
+          Owner
+          <select id="filter-owner"></select>
+        </label>
+        <label class="filter-search">
+          Search
           <input id="filter-search" type="search" placeholder="Run id, owner, next action" />
         </label>
       </div>
@@ -131,6 +166,7 @@
           <span id="info-workboard-spotlight" role="tooltip" class="info-tooltip">Top failing runs by failure count. Prioritize these for immediate triage.</span>
         </span>
       </h2>
+      <h2>Failure Spotlight</h2>
       <div id="failure-spotlight" class="spotlight"></div>
     </section>
 
@@ -141,6 +177,7 @@
           <span id="info-workboard-runs" role="tooltip" class="info-tooltip">Active and recent runs with status, owner, metrics, and todos.</span>
         </span>
       </h2>
+      <h2>Workboard Runs</h2>
       <div id="workboard-list" class="workboard-list"></div>
     </section>
 
@@ -151,6 +188,7 @@
           <span id="info-workboard-todo-feed" role="tooltip" class="info-tooltip">Chronological list of recent action items across runs.</span>
         </span>
       </h2>
+      <h2>Todo Feed</h2>
       <div id="todo-feed" class="todo-feed"></div>
     </section>
   </main>

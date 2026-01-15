@@ -35,6 +35,8 @@
             <button class="info-button" type="button" aria-label="About Snapshot Status" aria-describedby="info-hierarchy-status">?</button>
             <span id="info-hierarchy-status" role="tooltip" class="info-tooltip">Live indicates the snapshot loaded successfully. Offline means the poller failed.</span>
           </span>
+        <h1>Ownership Graph</h1>
+        <div class="status">
           <span class="status-pill" id="snapshot-status">—</span>
         </div>
       </div>
@@ -73,6 +75,19 @@
               <span id="info-hierarchy-alerts" role="tooltip" class="info-tooltip">Number of active alerts in the current snapshot.</span>
             </span>
           </h3>
+          <h3>As of</h3>
+          <p id="snapshot-time">—</p>
+        </div>
+        <div>
+          <h3>Health</h3>
+          <p id="snapshot-health">—</p>
+        </div>
+        <div>
+          <h3>Freshness</h3>
+          <p id="snapshot-freshness">—</p>
+        </div>
+        <div>
+          <h3>Alerts</h3>
           <p id="snapshot-alerts">—</p>
         </div>
       </div>
@@ -85,6 +100,7 @@
           <span id="info-hierarchy-tree" role="tooltip" class="info-tooltip">Hierarchy of ownership and execution. Click nodes to inspect details and artifacts.</span>
         </span>
       </h2>
+      <h2>Project → Track → Run → Agent → Todo</h2>
       <div id="hierarchy-tree" class="hierarchy-tree-container"></div>
     </section>
 
@@ -95,6 +111,7 @@
           <span id="info-hierarchy-detail" role="tooltip" class="info-tooltip">Metadata for the selected node, including IDs, status, and artifact links.</span>
         </span>
       </h2>
+      <h2>Node Detail</h2>
       <div id="node-detail" class="detail-panel">
         <div class="empty">Select a node to see details.</div>
       </div>
@@ -107,6 +124,7 @@
           <span id="info-hierarchy-alert-rail" role="tooltip" class="info-tooltip">Recent alerts across all runs, grouped by severity and time.</span>
         </span>
       </h2>
+      <h2>Alerts Rail</h2>
       <div id="alerts-rail" class="alerts-rail-body"></div>
     </section>
   </main>

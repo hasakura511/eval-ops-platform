@@ -308,6 +308,10 @@ const renderWorkboard = (snapshot) => {
         "Next",
         "Suggested next action for triage or execution."
       )} ${safeText(run.next_action)}</div>
+      <div><strong>Owner</strong> ${safeText(run.owner?.display_name)}</div>
+      <div><strong>Updated</strong> ${relativeTime(run.last_update_at)}</div>
+      <div><strong>Failures</strong> ${safeText(run.failure_count, 0)}</div>
+      <div><strong>Next</strong> ${safeText(run.next_action)}</div>
     `;
 
     const metrics = document.createElement("div");
@@ -354,6 +358,7 @@ const renderWorkboard = (snapshot) => {
       "Todos",
       "Action items associated with this run."
     )} <span class="todo-count">(${toArray(run.todos).length})</span>`;
+    summary.textContent = `Todos (${toArray(run.todos).length})`;
     todoDrawer.appendChild(summary);
 
     const todoList = document.createElement("div");
@@ -393,6 +398,7 @@ const renderWorkboard = (snapshot) => {
 
     header.appendChild(title);
     header.appendChild(statusWrap);
+    header.appendChild(statusChip);
 
     card.appendChild(header);
     card.appendChild(meta);
@@ -432,6 +438,10 @@ const renderSpotlight = (snapshot) => {
         "Total failed checks for the run. Higher values indicate greater triage urgency."
       );
       card.innerHTML = `
+  runs.forEach((item) => {
+    const card = document.createElement("div");
+    card.className = "spotlight-card";
+    card.innerHTML = `
       <div class="spotlight-title">${safeText(item.run.run_id)}</div>
       <div class="spotlight-meta">${safeText(item.project.name)} · ${safeText(
       item.track.name
@@ -442,6 +452,12 @@ const renderSpotlight = (snapshot) => {
     `;
       spotlight.appendChild(card);
     });
+      <div class="spotlight-meta">Failures: ${safeText(
+      item.run.failure_count
+    )}</div>
+    `;
+    spotlight.appendChild(card);
+  });
 };
 
 const renderTodoFeed = (snapshot) => {
@@ -514,6 +530,7 @@ const renderHierarchy = (snapshot) => {
           )}
           <span class="chip status">${safeText(status).toUpperCase()}</span>
         </span>
+        <span class="chip status">${safeText(status).toUpperCase()}</span>
       </div>
       <div class="hierarchy-node-meta">${safeText(extra)}</div>
     `;
@@ -690,6 +707,13 @@ const renderAlerts = (snapshot) => {
         "Run",
         "Run identifier associated with this alert."
       )} ${safeText(alert.run_id)}</div>
+    card.innerHTML = `
+      <div class="alert-header">
+        <span class="chip ${alert.severity}">${safeText(alert.severity)}</span>
+        <span>${relativeTime(alert.timestamp)}</span>
+      </div>
+      <div class="alert-message">${safeText(alert.message)}</div>
+      <div class="alert-meta">Run: ${safeText(alert.run_id)}</div>
     `;
     const refs = document.createElement("div");
     refs.className = "alert-artifacts";
