@@ -26,26 +26,72 @@
   <main class="layout">
     <section class="panel">
       <div class="panel-header">
-        <h1>Operations</h1>
+        <h1>
+          <span class="info-wrap">Operations
+            <button class="info-button" type="button" aria-label="About Operations" aria-describedby="info-ops-title">?</button>
+            <span id="info-ops-title" role="tooltip" class="info-tooltip">Execution-focused view showing active jurisdictions and unit-level discretion usage.</span>
+          </span>
+        </h1>
         <div class="status">
+          <span class="info-wrap">Global Status
+            <button class="info-button" type="button" aria-label="About Global Status" aria-describedby="info-ops-global-status">?</button>
+            <span id="info-ops-global-status" role="tooltip" class="info-tooltip">Overall system status classification. Colors indicate nominal, warning, or critical states.</span>
+          </span>
           <span id="status-beacon" class="status-beacon">&nbsp;</span>
           <span id="global-status">—</span>
         </div>
       </div>
       <div class="meta-grid">
         <div>
-          <h3>Time</h3>
+          <h3>
+            <span class="info-wrap">Time
+              <button class="info-button" type="button" aria-label="About Time" aria-describedby="info-ops-time">?</button>
+              <span id="info-ops-time" role="tooltip" class="info-tooltip">Timestamp for the current telemetry snapshot (ISO-8601).</span>
+            </span>
+          </h3>
           <p id="meta-time">—</p>
         </div>
         <div>
-          <h3>Active Jurisdictions</h3>
+          <h3>
+            <span class="info-wrap">Active Jurisdictions
+              <button class="info-button" type="button" aria-label="About Active Jurisdictions" aria-describedby="info-ops-jurisdictions">?</button>
+              <span id="info-ops-jurisdictions" role="tooltip" class="info-tooltip">List of operational domains currently permitted to act. Empty implies suspended execution.</span>
+            </span>
+          </h3>
           <p id="active-jurisdictions">—</p>
         </div>
       </div>
     </section>
 
     <section class="panel">
-      <h2>Units & Discretion Wallet</h2>
+      <h2>
+        <span class="info-wrap">Units & Discretion Wallet
+          <button class="info-button" type="button" aria-label="About Units & Discretion Wallet" aria-describedby="info-ops-wallet">?</button>
+          <span id="info-ops-wallet" role="tooltip" class="info-tooltip">Tracks unit mandates, jurisdictions, and discretion spending. Higher spend indicates more exceptions invoked.</span>
+        </span>
+      </h2>
+      <div class="table-legend">
+        <span class="info-wrap">Unit ID
+          <button class="info-button" type="button" aria-label="About Unit ID" aria-describedby="info-ops-unit">?</button>
+          <span id="info-ops-unit" role="tooltip" class="info-tooltip">Unique identifier for a reporting unit or team.</span>
+        </span>
+        <span class="info-wrap">Jurisdiction
+          <button class="info-button" type="button" aria-label="About Jurisdiction" aria-describedby="info-ops-jurisdiction">?</button>
+          <span id="info-ops-jurisdiction" role="tooltip" class="info-tooltip">Domain of responsibility for the unit. Used to scope policies and audits.</span>
+        </span>
+        <span class="info-wrap">D_i
+          <button class="info-button" type="button" aria-label="About D_i" aria-describedby="info-ops-di">?</button>
+          <span id="info-ops-di" role="tooltip" class="info-tooltip">Discretion budget allocated to the unit. Higher means more allowed exceptions.</span>
+        </span>
+        <span class="info-wrap">Spent
+          <button class="info-button" type="button" aria-label="About Discretion Spent" aria-describedby="info-ops-spent">?</button>
+          <span id="info-ops-spent" role="tooltip" class="info-tooltip">Discretion used in the current iteration. Values near D_i suggest high exception use.</span>
+        </span>
+        <span class="info-wrap">Variance memos
+          <button class="info-button" type="button" aria-label="About Variance memos" aria-describedby="info-ops-variance">?</button>
+          <span id="info-ops-variance" role="tooltip" class="info-tooltip">Count of exception memos required when discretion is exercised.</span>
+        </span>
+      </div>
       <div id="units-table" class="table"></div>
     </section>
   </main>

@@ -26,23 +26,47 @@
   <main class="layout">
     <section class="panel">
       <div class="panel-header">
-        <h1>Executive Cockpit</h1>
+        <h1>
+          <span class="info-wrap">Executive Cockpit
+            <button class="info-button" type="button" aria-label="About Executive Cockpit" aria-describedby="info-exec-title">?</button>
+            <span id="info-exec-title" role="tooltip" class="info-tooltip">Governance control panel for policy envelope and rule health. Use to decide whether to tighten or relax oversight.</span>
+          </span>
+        </h1>
         <div class="status">
+          <span class="info-wrap">Global Status
+            <button class="info-button" type="button" aria-label="About Global Status" aria-describedby="info-exec-global-status">?</button>
+            <span id="info-exec-global-status" role="tooltip" class="info-tooltip">Overall system status classification. Colors indicate nominal, warning, or critical states.</span>
+          </span>
           <span id="status-beacon" class="status-beacon">&nbsp;</span>
           <span id="global-status">—</span>
         </div>
       </div>
       <div class="meta-grid">
         <div>
-          <h3>Time</h3>
+          <h3>
+            <span class="info-wrap">Time
+              <button class="info-button" type="button" aria-label="About Time" aria-describedby="info-exec-time">?</button>
+              <span id="info-exec-time" role="tooltip" class="info-tooltip">Timestamp for the current telemetry snapshot (ISO-8601). Confirms data freshness.</span>
+            </span>
+          </h3>
           <p id="meta-time">—</p>
         </div>
         <div>
-          <h3>Iteration</h3>
+          <h3>
+            <span class="info-wrap">Iteration
+              <button class="info-button" type="button" aria-label="About Iteration" aria-describedby="info-exec-iteration">?</button>
+              <span id="info-exec-iteration" role="tooltip" class="info-tooltip">Monotonic loop counter for governance cycles. Higher means later iteration.</span>
+            </span>
+          </h3>
           <p id="meta-t">—</p>
         </div>
         <div>
-          <h3>Command</h3>
+          <h3>
+            <span class="info-wrap">Command
+              <button class="info-button" type="button" aria-label="About Command" aria-describedby="info-exec-command">?</button>
+              <span id="info-exec-command" role="tooltip" class="info-tooltip">Latest executive action issued to the system (e.g., FREEZE, HALT). Indicates current operating mode.</span>
+            </span>
+          </h3>
           <p id="last-command">—</p>
         </div>
       </div>
@@ -50,35 +74,75 @@
 
     <section class="grid two">
       <div class="panel">
-        <h2>Policy Envelope</h2>
+        <h2>
+          <span class="info-wrap">Policy Envelope
+            <button class="info-button" type="button" aria-label="About Policy Envelope" aria-describedby="info-exec-policy">?</button>
+            <span id="info-exec-policy" role="tooltip" class="info-tooltip">Core governance parameters that tune audit coverage, process budget, and risk appetite.</span>
+          </span>
+        </h2>
         <div class="metric">
-          <span class="metric-label">Audit Probability (p)</span>
+          <span class="metric-label">
+            <span class="info-wrap">Audit Probability (p)
+              <button class="info-button" type="button" aria-label="About Audit Probability" aria-describedby="info-exec-audit-prob">?</button>
+              <span id="info-exec-audit-prob" role="tooltip" class="info-tooltip">Fraction of outputs selected for audit. Higher p increases oversight but adds cost.</span>
+            </span>
+          </span>
           <span id="policy-p" class="metric-value">—</span>
         </div>
         <div class="metric">
-          <span class="metric-label">Process Budget (β)</span>
+          <span class="metric-label">
+            <span class="info-wrap">Process Budget (β)
+              <button class="info-button" type="button" aria-label="About Process Budget" aria-describedby="info-exec-beta">?</button>
+              <span id="info-exec-beta" role="tooltip" class="info-tooltip">Upper bound on governance overhead. Exceeding β triggers deregulation protocols.</span>
+            </span>
+          </span>
           <span id="beta" class="metric-value">—</span>
         </div>
         <div class="metric">
-          <span class="metric-label">Risk Appetite (r)</span>
+          <span class="metric-label">
+            <span class="info-wrap">Risk Appetite (r)
+              <button class="info-button" type="button" aria-label="About Risk Appetite" aria-describedby="info-exec-risk">?</button>
+              <span id="info-exec-risk" role="tooltip" class="info-tooltip">Acceptable risk threshold for outputs. Lower r means stricter acceptance criteria.</span>
+            </span>
+          </span>
           <span id="policy-r" class="metric-value">—</span>
         </div>
       </div>
       <div class="panel">
-        <h2>Rule Health</h2>
+        <h2>
+          <span class="info-wrap">Rule Health
+            <button class="info-button" type="button" aria-label="About Rule Health" aria-describedby="info-exec-rule-health">?</button>
+            <span id="info-exec-rule-health" role="tooltip" class="info-tooltip">Signals about rule churn and complexity. Higher entropy or budget usage may indicate governance drift.</span>
+          </span>
+        </h2>
         <div class="metric">
-          <span class="metric-label">Rule Entropy</span>
+          <span class="metric-label">
+            <span class="info-wrap">Rule Entropy
+              <button class="info-button" type="button" aria-label="About Rule Entropy" aria-describedby="info-exec-rule-entropy">?</button>
+              <span id="info-exec-rule-entropy" role="tooltip" class="info-tooltip">Measure of rule complexity and volatility. Higher entropy indicates a less stable ruleset.</span>
+            </span>
+          </span>
           <span id="rule-entropy" class="metric-value">—</span>
         </div>
         <div class="metric">
-          <span class="metric-label">Rule Budget</span>
+          <span class="metric-label">
+            <span class="info-wrap">Rule Budget
+              <button class="info-button" type="button" aria-label="About Rule Budget" aria-describedby="info-exec-rule-budget">?</button>
+              <span id="info-exec-rule-budget" role="tooltip" class="info-tooltip">Current rule count versus allowed budget (b). Higher usage leaves less room for new rules.</span>
+            </span>
+          </span>
           <span id="rule-budget" class="metric-value">—</span>
         </div>
       </div>
     </section>
 
     <section class="panel">
-      <h2>Deregulation Trigger</h2>
+      <h2>
+        <span class="info-wrap">Deregulation Trigger
+          <button class="info-button" type="button" aria-label="About Deregulation Trigger" aria-describedby="info-exec-deregulation">?</button>
+          <span id="info-exec-deregulation" role="tooltip" class="info-tooltip">Alert fired when AdminRatio exceeds β. Indicates the system should reduce governance overhead.</span>
+        </span>
+      </h2>
       <p id="admin-ratio-status" class="callout">—</p>
     </section>
   </main>
