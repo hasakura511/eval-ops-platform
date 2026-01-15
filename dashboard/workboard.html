@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Control Room · Workboard</title>
+  <link rel="stylesheet" href="assets/styles.css" />
+</head>
+<body class="portrait">
+  <header class="site-header">
+    <div class="brand">
+      <span class="brand-title">Control Room</span>
+      <span class="brand-subtitle">Workboard</span>
+    </div>
+    <nav class="nav">
+      <a class="nav-link active" href="workboard.html">Workboard</a>
+      <a class="nav-link" href="hierarchy.html">Hierarchy</a>
+      <a class="nav-link" href="index.html">Summary</a>
+      <a class="nav-link" href="operations.html">Operations</a>
+      <a class="nav-link" href="records.html">Records</a>
+    </nav>
+  </header>
+
+  <main class="layout control-layout">
+    <section class="panel control-header">
+      <div class="panel-header">
+        <h1>Workboard</h1>
+        <div class="status">
+          <span class="status-pill" id="snapshot-status">—</span>
+        </div>
+      </div>
+      <div class="meta-grid">
+        <div>
+          <h3>As of</h3>
+          <p id="snapshot-time">—</p>
+        </div>
+        <div>
+          <h3>Health</h3>
+          <p id="snapshot-health">—</p>
+        </div>
+        <div>
+          <h3>Freshness</h3>
+          <p id="snapshot-freshness">—</p>
+        </div>
+        <div>
+          <h3>Alerts</h3>
+          <p id="snapshot-alerts">—</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel filters">
+      <h2>Filters</h2>
+      <div class="filter-grid">
+        <label>
+          Project
+          <select id="filter-project"></select>
+        </label>
+        <label>
+          Track
+          <select id="filter-track"></select>
+        </label>
+        <label>
+          Status
+          <select id="filter-status"></select>
+        </label>
+        <label>
+          Owner
+          <select id="filter-owner"></select>
+        </label>
+        <label class="filter-search">
+          Search
+          <input id="filter-search" type="search" placeholder="Run id, owner, next action" />
+        </label>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Failure Spotlight</h2>
+      <div id="failure-spotlight" class="spotlight"></div>
+    </section>
+
+    <section class="panel">
+      <h2>Workboard Runs</h2>
+      <div id="workboard-list" class="workboard-list"></div>
+    </section>
+
+    <section class="panel">
+      <h2>Todo Feed</h2>
+      <div id="todo-feed" class="todo-feed"></div>
+    </section>
+  </main>
+
+  <script src="assets/control_room.js"></script>
+</body>
+</html>
