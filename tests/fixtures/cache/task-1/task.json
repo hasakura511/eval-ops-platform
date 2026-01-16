@@ -1,0 +1,11 @@
+{
+  "task_id": "task-1",
+  "query": "spider man",
+  "result": "Spider Man",
+  "query_links": {
+    "google": "https://www.google.com/search?q=spider+man"
+  },
+  "result_links": {
+    "imdb": "https://www.imdb.com/title/tt2250912/"
+  }
+}

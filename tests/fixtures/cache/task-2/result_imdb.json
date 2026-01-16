@@ -1,0 +1,9 @@
+{
+  "input_url": "https://www.imdb.com/title/tt0108052/",
+  "final_url": "https://www.imdb.com/title/tt0108052/",
+  "status": 200,
+  "timestamp": "2024-01-01T00:00:00Z",
+  "error": null,
+  "html_path": "result_imdb.html",
+  "screenshot_path": null
+}

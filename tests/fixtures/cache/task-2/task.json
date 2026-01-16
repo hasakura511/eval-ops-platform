@@ -1,0 +1,11 @@
+{
+  "task_id": "task-2",
+  "query": "schindlers list",
+  "result": "Schindlers List",
+  "query_links": {
+    "google": "https://www.google.com/search?q=schindler%27s+list"
+  },
+  "result_links": {
+    "imdb": "https://www.imdb.com/title/tt0108052/"
+  }
+}

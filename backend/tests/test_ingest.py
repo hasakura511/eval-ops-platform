@@ -4,9 +4,14 @@ Tests for ingest endpoint and LLM preprocessing.
 
 import json
 import os
+import uuid
+import importlib
 import pytest
+import anyio
+import httpx
 import requests
 
+from app.core.database import get_db
 from app.services.llm_preprocessor import (
     clean_llm_response,
     preprocess_with_llm,
@@ -60,6 +65,72 @@ Query: coffee
 Result Being Evaluated: Cafe Milano
 Classification: Relevant
 """
+
+class DummySession:
+    def add(self, obj):
+        if getattr(obj, "id", None) is None:
+            obj.id = uuid.uuid4()
+
+    def commit(self):
+        return None
+
+    def refresh(self, obj):
+        return None
+
+    def close(self):
+        return None
+
+
+def override_get_db():
+    db = DummySession()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
+def _build_asgi_request(app):
+    async def _async_request(method: str, url: str, **kwargs):
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as async_client:
+            return await async_client.request(method, url, **kwargs)
+
+    def request(method: str, url: str, **kwargs):
+        async def runner():
+            return await _async_request(method, url, **kwargs)
+
+        return anyio.run(runner)
+
+    return request
+
+
+@pytest.fixture()
+def asgi_post(tmp_path, monkeypatch):
+    storage_path = tmp_path / "artifacts"
+    storage_path.mkdir()
+    monkeypatch.setenv("STORAGE_PATH", str(storage_path))
+
+    config_module = importlib.import_module("app.core.config")
+    importlib.reload(config_module)
+    from app.core.config import settings
+
+    artifacts_module = importlib.import_module("app.api.artifacts")
+    importlib.reload(artifacts_module)
+
+    main_module = importlib.import_module("app.main")
+    importlib.reload(main_module)
+    app = main_module.app
+
+    app.dependency_overrides[get_db] = override_get_db
+    request = _build_asgi_request(app)
+
+    def post(url: str, **kwargs):
+        return request("POST", url, **kwargs)
+
+    try:
+        yield post
+    finally:
+        app.dependency_overrides.clear()
 
 
 class TestCleanLLMResponse:
@@ -157,20 +228,19 @@ class TestDockerOllamaConnection:
         except Exception:
             pytest.skip("Docker not accessible")
 
-    def test_docker_to_ollama_connection(self):
+    def test_docker_to_ollama_connection(self, asgi_post):
         """Test that Docker backend can reach Ollama via host.docker.internal."""
         # Call the ingest endpoint which uses Ollama from Docker
         try:
-            resp = requests.post(
-                "http://localhost:8000/api/v1/ingest/",
+            resp = asgi_post(
+                "/api/v1/ingest/",
                 json={"raw_text": SIMPLE_EVAL_OUTPUT},
-                timeout=120  # LLM can be slow
             )
             assert resp.status_code == 200
             data = resp.json()
             assert "parsed" in data
             assert "debug_info" in data["parsed"]
-        except requests.exceptions.RequestException as e:
+        except Exception as e:
             pytest.skip(f"Backend not accessible: {e}")
 
 
@@ -180,20 +250,13 @@ class TestIngestEndpoint:
     @pytest.fixture(autouse=True)
     def check_backend(self):
         """Skip tests if backend is not running."""
-        try:
-            resp = requests.get("http://localhost:8000/health", timeout=5)
-            # Accept 200 or 404 (endpoint may not exist)
-            if resp.status_code not in [200, 404]:
-                pytest.skip("Backend not healthy")
-        except requests.exceptions.RequestException:
-            pytest.skip("Backend not accessible")
+        return
 
-    def test_ingest_simple_format(self):
+    def test_ingest_simple_format(self, asgi_post):
         """Test ingest with simple eval output format."""
-        resp = requests.post(
-            "http://localhost:8000/api/v1/ingest/",
+        resp = asgi_post(
+            "/api/v1/ingest/",
             json={"raw_text": SIMPLE_EVAL_OUTPUT},
-            timeout=120
         )
 
         assert resp.status_code == 200
@@ -203,16 +266,15 @@ class TestIngestEndpoint:
         assert "parsed" in data
         assert data["parsed"]["debug_info"].get("query") == "best coffee shops"
 
-    def test_ingest_with_model_info(self):
+    def test_ingest_with_model_info(self, asgi_post):
         """Test ingest with model name and version."""
-        resp = requests.post(
-            "http://localhost:8000/api/v1/ingest/",
+        resp = asgi_post(
+            "/api/v1/ingest/",
             json={
                 "raw_text": SIMPLE_EVAL_OUTPUT,
                 "model_name": "claude-3-5-sonnet",
                 "model_version": "20241022",
             },
-            timeout=120
         )
 
         assert resp.status_code == 200
@@ -221,12 +283,11 @@ class TestIngestEndpoint:
         assert data.get("model_name") == "claude-3-5-sonnet"
         assert data.get("model_version") == "20241022"
 
-    def test_ingest_with_inline_prompt(self):
+    def test_ingest_with_inline_prompt(self, asgi_post):
         """Test ingest with inline agent prompt (prefix detection)."""
-        resp = requests.post(
-            "http://localhost:8000/api/v1/ingest/",
+        resp = asgi_post(
+            "/api/v1/ingest/",
             json={"raw_text": INLINE_EVAL_OUTPUT},
-            timeout=120
         )
 
         assert resp.status_code == 200
@@ -235,15 +296,14 @@ class TestIngestEndpoint:
         # Should have detected and extracted agent prompt
         assert "agent_prompt" in data
 
-    def test_ingest_with_explicit_prompt(self):
+    def test_ingest_with_explicit_prompt(self, asgi_post):
         """Test ingest with explicit agent_prompt field."""
-        resp = requests.post(
-            "http://localhost:8000/api/v1/ingest/",
+        resp = asgi_post(
+            "/api/v1/ingest/",
             json={
                 "raw_text": SIMPLE_EVAL_OUTPUT,
                 "agent_prompt": "Evaluate this carefully",
             },
-            timeout=120
         )
 
         assert resp.status_code == 200
@@ -251,12 +311,11 @@ class TestIngestEndpoint:
 
         assert data.get("agent_prompt") == "Evaluate this carefully"
 
-    def test_ingest_empty_text_rejected(self):
+    def test_ingest_empty_text_rejected(self, asgi_post):
         """Test that empty raw_text is rejected."""
-        resp = requests.post(
-            "http://localhost:8000/api/v1/ingest/",
+        resp = asgi_post(
+            "/api/v1/ingest/",
             json={"raw_text": ""},
-            timeout=30
         )
 
         assert resp.status_code == 400

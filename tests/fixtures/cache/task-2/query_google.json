@@ -1,0 +1,9 @@
+{
+  "input_url": "https://www.google.com/search?q=schindler%27s+list",
+  "final_url": "https://www.google.com/search?q=schindler%27s+list",
+  "status": 200,
+  "timestamp": "2024-01-01T00:00:00Z",
+  "error": null,
+  "html_path": "query_google.html",
+  "screenshot_path": null
+}
