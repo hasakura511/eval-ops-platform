@@ -40,6 +40,8 @@ class AlternativeCandidate(BaseModel):
     imdb_votes: Optional[int] = None
     imdb_rating: Optional[float] = None
     starmeter: Optional[int] = None
+    release_year: Optional[int] = None
+    end_year: Optional[int] = None  # For series: when it ended (None if ongoing)
     source: Optional[str] = None
 
 
@@ -52,6 +54,8 @@ class Features(BaseModel):
     imdb_votes: Optional[int] = None
     imdb_rating: Optional[float] = None
     starmeter: Optional[int] = None
+    release_year: Optional[int] = None
+    end_year: Optional[int] = None  # For series: when it ended (None if ongoing)
     query_candidates: List[str] = Field(default_factory=list)
     alternatives: List[AlternativeCandidate] = Field(default_factory=list)
     best_alternative: Optional[AlternativeCandidate] = None

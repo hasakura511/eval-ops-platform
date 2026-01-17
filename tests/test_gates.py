@@ -182,6 +182,71 @@ def test_comment_reason_alternative_exists():
     assert "alternative exists" in output.comment
 
 
+def test_weak_prefix_word_match_upgrade():
+    config = load_yaml(CONFIG_PATH)
+    config["weak_prefix"] = {"max_len": 2, "match_min": 0.8, "popularity_min": 0.2}
+    features = Features(
+        task_id="t4d-alt",
+        query="e",
+        result="Speak No Evil",
+        official_title="Speak No Evil",
+        content_type="movie",
+        imdb_votes=127293,
+        imdb_rating=6.8,
+        query_candidates=["Speak No Evil"],
+        alternatives=[
+            {
+                "name": "Eternals",
+                "imdb_url": "https://www.imdb.com/title/tt9032400/",
+                "content_type": "movie",
+                "imdb_votes": 2500000,
+                "imdb_rating": 8.0,
+                "starmeter": None,
+                "source": "alt_imdb_1",
+            }
+        ],
+        result_imdb_ok=True,
+        evidence_refs={},
+        errors=[],
+    )
+    output = score_features(features, config)
+    assert output.rating == "Acceptable"
+    assert output.debug.features["weak_prefix_upgrade"] is True
+    assert "poorly related" in output.comment
+
+
+def test_unpopular_prefix_upgrade():
+    config = load_yaml(CONFIG_PATH)
+    features = Features(
+        task_id="t4d-unpopular",
+        query="cruel",
+        result="Cruel Peter",
+        official_title="Cruel Peter",
+        content_type="movie",
+        imdb_votes=3527,
+        imdb_rating=4.5,
+        query_candidates=["Cruel Intentions"],
+        alternatives=[
+            {
+                "name": "Cruel Intentions",
+                "imdb_url": "https://www.imdb.com/title/tt0139134/",
+                "content_type": "movie",
+                "imdb_votes": 218203,
+                "imdb_rating": 6.8,
+                "starmeter": None,
+                "source": "alt_imdb_1",
+            }
+        ],
+        result_imdb_ok=True,
+        evidence_refs={},
+        errors=[],
+    )
+    output = score_features(features, config)
+    assert output.rating == "Acceptable"
+    assert output.debug.features["unpopular_upgrade"] is True
+    assert "niche" in output.comment
+
+
 def test_low_vote_neutral_dominance():
     config = load_yaml(CONFIG_PATH)
     config["dominance"] = {"min_votes_for_dominance": 2000}

@@ -6,7 +6,7 @@ from .extract import extract_cache
 from .fetch import collect
 from .fit import fit_thresholds
 from .schemas import Features, LabeledFeature
-from .score import score_features
+from .score import LABELS, score_features
 from .utils import load_yaml, read_jsonl, safe_filename, write_jsonl
 
 
@@ -32,13 +32,19 @@ def _compute_metrics(preds, labels):
     correct = sum(1 for p, l in zip(preds, labels) if p == l)
     accuracy = correct / total if total else 0.0
 
+    labels_set = sorted(set(labels) | set(preds) | set(LABELS))
     counts = Counter(labels)
-    confusion = defaultdict(lambda: Counter())
+    for label in labels_set:
+        counts.setdefault(label, 0)
+    confusion = {label: Counter() for label in labels_set}
     for pred, label in zip(preds, labels):
         confusion[label][pred] += 1
+    for label in labels_set:
+        for pred_label in labels_set:
+            confusion[label].setdefault(pred_label, 0)
 
-    labels_set = sorted(set(labels) | set(preds))
     f1_scores = []
+    f1_support_scores = []
     for label in labels_set:
         tp = confusion[label][label]
         fp = sum(confusion[other].get(label, 0) for other in labels_set if other != label)
@@ -47,11 +53,18 @@ def _compute_metrics(preds, labels):
         recall = tp / (tp + fn) if (tp + fn) else 0.0
         f1 = (2 * precision * recall / (precision + recall)) if (precision + recall) else 0.0
         f1_scores.append(f1)
+        if counts.get(label, 0) > 0:
+            f1_support_scores.append(f1)
     macro_f1 = sum(f1_scores) / len(f1_scores) if f1_scores else 0.0
+    macro_f1_support_only = (
+        sum(f1_support_scores) / len(f1_support_scores) if f1_support_scores else 0.0
+    )
 
     return {
         "accuracy": accuracy,
         "macro_f1": macro_f1,
+        "macro_f1_all_labels": macro_f1,
+        "macro_f1_support_only": macro_f1_support_only,
         "total": total,
         "counts": dict(counts),
         "confusion": {k: dict(v) for k, v in confusion.items()},
@@ -65,6 +78,7 @@ def _format_metrics(metrics):
         correct += counts.get(label, 0)
     lines.append(f"Accuracy: {metrics['accuracy']:.3f} ({correct}/{metrics['total']})")
     lines.append(f"Macro-F1: {metrics['macro_f1']:.3f}")
+    lines.append(f"Macro-F1 (support-only): {metrics['macro_f1_support_only']:.3f}")
     lines.append("Label counts:")
     for label, count in sorted(metrics["counts"].items()):
         lines.append(f"  {label}: {count}")
@@ -134,6 +148,28 @@ def cmd_eval(args):
     print(_format_metrics(metrics))
 
 
+def cmd_join(args):
+    labeled_rows = read_jsonl(args.labeled)
+    features_rows = read_jsonl(args.features)
+    features = {row["task_id"]: row for row in features_rows}
+
+    output_rows = []
+    for row in labeled_rows:
+        task_id = row.get("task_id")
+        if task_id not in features:
+            raise ValueError(f"Missing features for task_id={task_id}")
+        merged = dict(row)
+        label_field = args.label_field
+        if label_field and label_field in merged:
+            merged["label"] = merged[label_field]
+        elif "gold_rating" in merged:
+            merged["label"] = merged["gold_rating"]
+        merged["features"] = features[task_id].get("features", features[task_id])
+        output_rows.append(merged)
+
+    write_jsonl(args.out, output_rows)
+
+
 def build_parser():
     parser = argparse.ArgumentParser(prog="hint_eval")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -175,6 +211,13 @@ def build_parser():
     eval_parser.add_argument("--cache-dir", default=None,
                              help="Cache directory for labeled tasks without features")
     eval_parser.set_defaults(func=cmd_eval)
+
+    join_parser = sub.add_parser("join", help="Join labeled JSONL with features by task_id")
+    join_parser.add_argument("--labeled", required=True)
+    join_parser.add_argument("--features", required=True)
+    join_parser.add_argument("--out", required=True)
+    join_parser.add_argument("--label-field", default="gold_rating")
+    join_parser.set_defaults(func=cmd_join)
 
     return parser
 

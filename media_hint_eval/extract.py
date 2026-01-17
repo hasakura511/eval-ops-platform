@@ -55,21 +55,34 @@ def _parse_json_ld(html: str) -> Optional[dict]:
     return None
 
 
-def _extract_imdb(html: str) -> Dict[str, Optional[object]]:
+def _extract_imdb(html: str, url: Optional[str] = None) -> Dict[str, Optional[object]]:
     data = {
         "official_title": None,
         "content_type": "unknown",
         "imdb_rating": None,
         "imdb_votes": None,
         "starmeter": None,
+        "release_year": None,
+        "end_year": None,
     }
     if not html:
         return data
 
+    # Detect person page from URL pattern
+    is_person_page = False
+    if url and "/name/nm" in url:
+        is_person_page = True
+        data["content_type"] = "person"
+
     json_ld = _parse_json_ld(html)
     if json_ld:
         raw_type = str(json_ld.get("@type", "")).lower()
-        data["content_type"] = IMDB_TYPE_MAP.get(raw_type, "unknown")
+        detected_type = IMDB_TYPE_MAP.get(raw_type, "unknown")
+        # Only override if not already detected as person from URL
+        if not is_person_page:
+            data["content_type"] = detected_type
+        elif detected_type == "person":
+            data["content_type"] = "person"
         name = json_ld.get("name")
         if isinstance(name, str):
             data["official_title"] = name.strip()
@@ -85,8 +98,35 @@ def _extract_imdb(html: str) -> Dict[str, Optional[object]]:
                     data["imdb_votes"] = int(str(rating.get("ratingCount")).replace(",", ""))
                 except (TypeError, ValueError):
                     pass
+        # Extract release year from datePublished (format: "YYYY-MM-DD" or "YYYY")
+        date_published = json_ld.get("datePublished")
+        if date_published and isinstance(date_published, str):
+            year_match = re.match(r"(\d{4})", date_published)
+            if year_match:
+                try:
+                    data["release_year"] = int(year_match.group(1))
+                except ValueError:
+                    pass
 
     soup = BeautifulSoup(html, "html.parser")
+
+    # Extract year range from title or HTML (e.g., "2019-2023" or "2019-")
+    # This handles series with end dates
+    year_range_match = re.search(r"\((\d{4})(?:[–\-](\d{4})?)?(?:\s*\))|\b(\d{4})[–\-](\d{4})?\b", html[:5000])
+    if year_range_match:
+        groups = year_range_match.groups()
+        start_year = groups[0] or groups[2]
+        end_year = groups[1] or groups[3]
+        if start_year and data["release_year"] is None:
+            try:
+                data["release_year"] = int(start_year)
+            except ValueError:
+                pass
+        if end_year:
+            try:
+                data["end_year"] = int(end_year)
+            except ValueError:
+                pass
     if data["official_title"] is None:
         og_title = soup.find("meta", attrs={"property": "og:title"})
         if og_title and og_title.get("content"):
@@ -102,6 +142,14 @@ def _extract_imdb(html: str) -> Dict[str, Optional[object]]:
             data["starmeter"] = int(starmeter_match.group(1).replace(",", ""))
         except ValueError:
             pass
+
+    # Additional person page detection from HTML structure
+    if data["content_type"] == "unknown":
+        # Check for person-specific elements
+        if soup.find("div", {"data-testid": "hero__pageTitle"}):
+            # Check if it's a name page by looking for filmography section
+            if soup.find("section", {"data-testid": "Filmography"}):
+                data["content_type"] = "person"
 
     return data
 
@@ -214,14 +262,17 @@ def _read_alternative_candidates(task_dir: str) -> List[AlternativeCandidate]:
         meta = _load_meta(task_dir, key)
         if not html or not meta:
             continue
-        imdb_data = _extract_imdb(html)
+        alt_url = meta.get("final_url")
+        imdb_data = _extract_imdb(html, alt_url)
         candidate = AlternativeCandidate(
             name=imdb_data.get("official_title"),
             content_type=imdb_data.get("content_type") or "unknown",
             imdb_votes=imdb_data.get("imdb_votes"),
             imdb_rating=imdb_data.get("imdb_rating"),
             starmeter=imdb_data.get("starmeter"),
-            imdb_url=meta.get("final_url"),
+            release_year=imdb_data.get("release_year"),
+            end_year=imdb_data.get("end_year"),
+            imdb_url=alt_url,
             source=key,
         )
         alternatives.append(candidate)
@@ -248,7 +299,11 @@ def extract_task(task_dir: str) -> Optional[Features]:
     query_google_html = _load_html(task_dir, "query_google")
     query_imdb_html = _load_html(task_dir, "query_imdb")
 
-    imdb_data = _extract_imdb(result_imdb_html) if result_imdb_html else {}
+    # Get result_imdb URL for person page detection
+    result_imdb_meta = _load_meta(task_dir, "result_imdb")
+    result_imdb_url = result_imdb_meta.get("final_url") if result_imdb_meta else None
+
+    imdb_data = _extract_imdb(result_imdb_html, result_imdb_url) if result_imdb_html else {}
     google_title = _extract_google_title(result_google_html)
 
     official_title = imdb_data.get("official_title")
@@ -262,16 +317,18 @@ def extract_task(task_dir: str) -> Optional[Features]:
     if not query_candidates:
         query_candidates = _extract_google_candidates(query_imdb_html)
 
-    result_imdb_url, result_google_url, query_google_url, query_imdb_url, errors = _best_evidence(task_dir)
+    result_imdb_url_from_evidence, result_google_url, query_google_url, query_imdb_url, errors = _best_evidence(task_dir)
     alternatives = _read_alternative_candidates(task_dir)
     best_alternative = None
     if alternatives:
         best_alternative = max(alternatives, key=_candidate_popularity)
 
-    result_imdb_meta = _load_meta(task_dir, "result_imdb")
+    # result_imdb_meta already loaded above
     result_google_meta = _load_meta(task_dir, "result_google")
     result_imdb_ok, result_imdb_blocked = _parse_page_status(result_imdb_meta, result_imdb_html)
     result_google_ok, result_google_blocked = _parse_page_status(result_google_meta, result_google_html)
+    # For person pages, having a title and content_type is enough
+    # For title pages, we need the full parsed data
     imdb_parsed = bool(imdb_data.get("official_title")) and content_type != "unknown"
     google_parsed = bool(google_title)
     result_imdb_ok = result_imdb_ok and imdb_parsed
@@ -286,6 +343,8 @@ def extract_task(task_dir: str) -> Optional[Features]:
         imdb_votes=imdb_data.get("imdb_votes"),
         imdb_rating=imdb_data.get("imdb_rating"),
         starmeter=imdb_data.get("starmeter"),
+        release_year=imdb_data.get("release_year"),
+        end_year=imdb_data.get("end_year"),
         query_candidates=query_candidates,
         alternatives=alternatives,
         best_alternative=best_alternative,
@@ -294,7 +353,7 @@ def extract_task(task_dir: str) -> Optional[Features]:
         result_imdb_blocked=result_imdb_blocked,
         result_google_blocked=result_google_blocked,
         evidence_refs={
-            "result_imdb_url": result_imdb_url,
+            "result_imdb_url": result_imdb_url or result_imdb_url_from_evidence,
             "result_google_url": result_google_url,
             "query_google_url": query_google_url,
             "query_imdb_url": query_imdb_url,

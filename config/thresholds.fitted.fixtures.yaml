@@ -1,0 +1,80 @@
+weights:
+  match: 0.4
+  popularity: 0.3
+  dominance: 0.3
+thresholds:
+  perfect: 0.82
+  good: 0.68
+  acceptable: 0.5
+dominance_cutoffs:
+  perfect: 0.8
+  good: 0.65
+  acceptable: 0.5
+dominance:
+  min_votes_for_dominance: 2000
+popularity:
+  max_votes: 1000000
+  rating_weight: 0.4
+  votes_weight: 0.6
+  starmeter_max: 500000
+  category_score: 0.35
+incomplete_title:
+  upgrade_dominance: 0.85
+  upgrade_match: 0.9
+alt_margin: 0.2
+alt_min_popularity: 0.05
+sequel_penalty: 0.08
+niche_popularity: 0.2
+irrelevant_match_max: 0.6
+concerns_keywords:
+- porn
+- xxx
+- adult
+- explicit
+- rape
+- gore
+- extreme violence
+- hate
+- nazi
+fit:
+  grid:
+    thresholds:
+      perfect:
+      - 0.82
+      - 0.85
+      - 0.88
+      good:
+      - 0.68
+      - 0.7
+      - 0.72
+      acceptable:
+      - 0.5
+      - 0.55
+      - 0.6
+    dominance_cutoffs:
+      perfect:
+      - 0.8
+      - 0.85
+      - 0.9
+      good:
+      - 0.65
+      - 0.7
+      - 0.75
+      acceptable:
+      - 0.5
+      - 0.55
+      - 0.6
+    weights:
+      match:
+      - 0.4
+      - 0.5
+      - 0.6
+      popularity:
+      - 0.2
+      - 0.3
+      - 0.4
+      dominance:
+      - 0.1
+      - 0.2
+      - 0.3
+  last_accuracy: 1.0

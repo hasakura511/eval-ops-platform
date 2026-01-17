@@ -32,6 +32,40 @@ Notes:
 - `--collect-alternatives` fetches IMDb pages for the top query candidates to compute dominance.
 - Fit/eval on raw labeled tasks expects a populated cache directory for those task_ids.
 
+## Fixture Demo (Offline)
+
+This demo uses `tests/fixtures/cache` to run end-to-end without network access.
+
+1) Extract features from fixtures
+```bash
+./hint_eval extract --cache-dir tests/fixtures/cache --out /tmp/features.fixtures.jsonl
+```
+
+2) Join labels + features
+```bash
+./hint_eval join --labeled examples/fixture_labeled.jsonl \\
+  --features /tmp/features.fixtures.jsonl \\
+  --out /tmp/labeled_with_features.fixtures.jsonl
+```
+
+3) Evaluate baseline
+```bash
+./hint_eval eval --labeled /tmp/labeled_with_features.fixtures.jsonl --config config/thresholds.yaml
+```
+
+4) Fit and re-evaluate
+```bash
+./hint_eval fit --train /tmp/labeled_with_features.fixtures.jsonl \\
+  --config-in config/thresholds.yaml \\
+  --config-out config/thresholds.fitted.fixtures.yaml
+
+./hint_eval eval --labeled /tmp/labeled_with_features.fixtures.jsonl --config config/thresholds.fitted.fixtures.yaml
+```
+
+The confusion matrix is non-empty and accuracy is printed for both runs; on larger datasets you should see accuracy changes as thresholds adapt.
+
+On tiny datasets, Macro-F1 can look low because the all-labels version averages in labels with zero support, while Macro-F1 (support-only) reflects just the labels present in y_true; JSON metrics include both variants.
+
 ## Alternatives + Dominance
 
 Alternatives are extracted from the query evidence and used to determine whether there is a clearly better completion.

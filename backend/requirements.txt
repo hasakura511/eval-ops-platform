@@ -19,6 +19,10 @@ boto3==1.34.34
 anthropic==0.40.0
 requests==2.31.0
 
+# HTML Parsing (for evidence collection)
+beautifulsoup4==4.12.3
+lxml==5.1.0
+
 # Utilities
 python-dotenv==1.0.0
 

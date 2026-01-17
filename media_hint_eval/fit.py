@@ -5,7 +5,7 @@ from typing import Dict, List, Optional, Tuple
 
 from .extract import extract_task
 from .schemas import Features, LabeledFeature
-from .score import score_features
+from .score import LABELS, score_features
 from .utils import dump_yaml, load_yaml, read_jsonl, safe_filename
 
 
@@ -27,13 +27,19 @@ def _compute_metrics(preds: List[str], labels: List[str]) -> Dict[str, object]:
     correct = sum(1 for p, l in zip(preds, labels) if p == l)
     accuracy = correct / total if total else 0.0
 
+    labels_set = sorted(set(labels) | set(preds) | set(LABELS))
     counts = Counter(labels)
-    confusion = defaultdict(lambda: Counter())
+    for label in labels_set:
+        counts.setdefault(label, 0)
+    confusion = {label: Counter() for label in labels_set}
     for pred, label in zip(preds, labels):
         confusion[label][pred] += 1
+    for label in labels_set:
+        for pred_label in labels_set:
+            confusion[label].setdefault(pred_label, 0)
 
-    labels_set = sorted(set(labels) | set(preds))
     f1_scores = []
+    f1_support_scores = []
     for label in labels_set:
         tp = confusion[label][label]
         fp = sum(confusion[other].get(label, 0) for other in labels_set if other != label)
@@ -42,13 +48,20 @@ def _compute_metrics(preds: List[str], labels: List[str]) -> Dict[str, object]:
         recall = tp / (tp + fn) if (tp + fn) else 0.0
         f1 = (2 * precision * recall / (precision + recall)) if (precision + recall) else 0.0
         f1_scores.append(f1)
+        if counts.get(label, 0) > 0:
+            f1_support_scores.append(f1)
     macro_f1 = sum(f1_scores) / len(f1_scores) if f1_scores else 0.0
+    macro_f1_support_only = (
+        sum(f1_support_scores) / len(f1_support_scores) if f1_support_scores else 0.0
+    )
 
     return {
         "accuracy": accuracy,
         "total": total,
         "correct": correct,
         "macro_f1": macro_f1,
+        "macro_f1_all_labels": macro_f1,
+        "macro_f1_support_only": macro_f1_support_only,
         "counts": dict(counts),
         "confusion": {k: dict(v) for k, v in confusion.items()},
     }
@@ -58,6 +71,7 @@ def _format_metrics(metrics: Dict[str, object]) -> str:
     lines = []
     lines.append(f"Accuracy: {metrics['accuracy']:.3f} ({metrics['correct']}/{metrics['total']})")
     lines.append(f"Macro-F1: {metrics['macro_f1']:.3f}")
+    lines.append(f"Macro-F1 (support-only): {metrics['macro_f1_support_only']:.3f}")
     lines.append("Label counts:")
     for label, count in sorted(metrics["counts"].items()):
         lines.append(f"  {label}: {count}")

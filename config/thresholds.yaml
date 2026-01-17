@@ -32,6 +32,13 @@ alt_min_popularity: 0.05
 sequel_penalty: 0.08
 niche_popularity: 0.2
 irrelevant_match_max: 0.6
+weak_prefix:
+  max_len: 2
+  match_min: 0.8
+  popularity_min: 0.2
+unpopular_acceptance:
+  match_min: 0.9
+  votes_max: 5000
 
 concerns_keywords:
   - porn
