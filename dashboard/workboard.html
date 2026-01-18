@@ -12,53 +12,56 @@
       <span class="brand-title">Control Room</span>
       <span class="brand-subtitle">Workboard</span>
     </div>
-    <nav class="nav">
+    <nav class="nav" aria-label="Primary">
       <a class="nav-link active" href="workboard.html">Workboard</a>
       <a class="nav-link" href="hierarchy.html">Hierarchy</a>
     </nav>
   </header>
 
-  <main class="layout control-layout">
-    <section class="panel control-header">
+  <main class="layout workboard-layout">
+    <section class="panel workboard-header" aria-labelledby="workboard-title">
       <div class="panel-header">
-        <h1>
-          <span class="info-wrap">
-            <span class="info-label">Workboard <span class="json-key">screen.workboard</span></span>
-            <button class="info-button" type="button" aria-label="Explain Workboard" aria-expanded="false" aria-controls="info-workboard-title">?</button>
-            <span id="info-workboard-title" class="info-panel" role="region" aria-hidden="true">
-              <div class="info-panel-section">
-                <div class="info-panel-title">Purpose</div>
-                <div>Portrait triage view for deciding which runs need attention now.</div>
-              </div>
-              <div class="info-panel-section">
-                <div class="info-panel-title">Inputs</div>
-                <ul>
-                  <li>Snapshot core fields <span class="json-key">as_of</span>, <span class="json-key">health</span>.</li>
-                  <li>Run list <span class="json-key">projects[].tracks[].runs[]</span>.</li>
-                  <li>Todos and alerts <span class="json-key">runs[].todos[]</span>, <span class="json-key">alerts[]</span>.</li>
-                </ul>
-              </div>
-              <div class="info-panel-section">
-                <div class="info-panel-title">Output / Action</div>
-                <ul>
-                  <li>Pick which run to open, assign, or escalate.</li>
-                  <li>Decide whether the system is healthy enough to proceed.</li>
-                </ul>
-              </div>
-              <div class="info-panel-section">
-                <div class="info-panel-title">Failure modes</div>
-                <ul>
-                  <li>Snapshot can be stale, hiding new failures.</li>
-                  <li>Metrics may be undefined or inconsistent across tracks.</li>
-                </ul>
-              </div>
-              <div class="info-panel-section">
-                <div class="info-panel-title">Future link</div>
-                <div>Runner + judge pipeline + human triage populate the snapshot.</div>
-              </div>
+        <div>
+          <h1 id="workboard-title">
+            <span class="info-wrap">
+              <span class="info-label">Workboard <span class="json-key">screen.workboard</span></span>
+              <button class="info-button" type="button" aria-label="Explain Workboard" aria-expanded="false" aria-controls="info-workboard-title">?</button>
+              <span id="info-workboard-title" class="info-panel" role="region" aria-hidden="true">
+                <div class="info-panel-section">
+                  <div class="info-panel-title">Purpose</div>
+                  <div>Portrait triage view for deciding which runs need attention now.</div>
+                </div>
+                <div class="info-panel-section">
+                  <div class="info-panel-title">Inputs</div>
+                  <ul>
+                    <li>Snapshot core fields <span class="json-key">as_of</span>, <span class="json-key">health</span>.</li>
+                    <li>Run list <span class="json-key">projects[].tracks[].runs[]</span>.</li>
+                    <li>Todos and alerts <span class="json-key">runs[].todos[]</span>, <span class="json-key">alerts[]</span>.</li>
+                  </ul>
+                </div>
+                <div class="info-panel-section">
+                  <div class="info-panel-title">Output / Action</div>
+                  <ul>
+                    <li>Pick which run to open, assign, or escalate.</li>
+                    <li>Decide whether the system is healthy enough to proceed.</li>
+                  </ul>
+                </div>
+                <div class="info-panel-section">
+                  <div class="info-panel-title">Failure modes</div>
+                  <ul>
+                    <li>Snapshot can be stale, hiding new failures.</li>
+                    <li>Metrics may be undefined or inconsistent across tracks.</li>
+                  </ul>
+                </div>
+                <div class="info-panel-section">
+                  <div class="info-panel-title">Future link</div>
+                  <div>Runner + judge pipeline + human triage populate the snapshot.</div>
+                </div>
+              </span>
             </span>
-          </span>
-        </h1>
+          </h1>
+          <p class="panel-subtitle">Prioritize failing runs, route ownership, and pick the next action.</p>
+        </div>
         <div class="status">
           <span class="info-wrap">
             <span class="info-label">Snapshot Status <span class="json-key">client.poller</span></span>
@@ -245,6 +248,20 @@
           <p id="snapshot-alerts">—</p>
         </div>
       </div>
+      <div class="meta-row">
+        <div class="meta-item">
+          <span class="meta-label">Snapshot age</span>
+          <span id="snapshot-relative">—</span>
+        </div>
+        <div class="meta-item">
+          <span class="meta-label">Last refreshed</span>
+          <span id="snapshot-refreshed">—</span>
+        </div>
+        <div class="meta-item">
+          <span class="meta-label">Staleness</span>
+          <span id="snapshot-stale" class="status-pill">—</span>
+        </div>
+      </div>
       <div class="toggle-row">
         <label><input id="toggle-json-keys" type="checkbox" /> Show JSON keys</label>
       </div>
@@ -264,8 +281,8 @@
       </div>
     </section>
 
-    <section class="panel filters">
-      <h2>
+    <section class="panel filters workboard-filters" aria-labelledby="workboard-filters-title">
+      <h2 id="workboard-filters-title">
         <span class="info-wrap">
           <span class="info-label">Filters <span class="json-key">client.filters</span></span>
           <button class="info-button" type="button" aria-label="Explain Filters" aria-expanded="false" aria-controls="info-workboard-filters">?</button>
@@ -487,8 +504,8 @@
       </div>
     </section>
 
-    <section class="panel">
-      <h2>
+    <section class="panel workboard-spotlight" aria-labelledby="failure-spotlight-title">
+      <h2 id="failure-spotlight-title">
         <span class="info-wrap">
           <span class="info-label">Failure Spotlight <span class="json-key">runs[].failure_count</span></span>
           <button class="info-button" type="button" aria-label="Explain Failure Spotlight" aria-expanded="false" aria-controls="info-workboard-spotlight">?</button>
@@ -523,7 +540,9 @@
           </span>
         </span>
       </h2>
-      <div id="failure-spotlight" class="spotlight"></div>
+      <div id="failure-spotlight" class="spotlight">
+        <div class="empty">Loading failures...</div>
+      </div>
       <div class="assumptions-box">
         <h3>Assumptions / Open Questions</h3>
         <ul>
@@ -533,8 +552,8 @@
       </div>
     </section>
 
-    <section class="panel">
-      <h2>
+    <section class="panel workboard-runs" aria-labelledby="workboard-runs-title">
+      <h2 id="workboard-runs-title">
         <span class="info-wrap">
           <span class="info-label">Workboard Runs <span class="json-key">projects[].tracks[].runs[]</span></span>
           <button class="info-button" type="button" aria-label="Explain Workboard Runs" aria-expanded="false" aria-controls="info-workboard-runs">?</button>
@@ -568,7 +587,9 @@
           </span>
         </span>
       </h2>
-      <div id="workboard-list" class="workboard-list"></div>
+      <div id="workboard-list" class="workboard-list">
+        <div class="empty">Loading runs...</div>
+      </div>
       <div class="assumptions-box">
         <h3>Assumptions / Open Questions</h3>
         <ul>
@@ -578,8 +599,8 @@
       </div>
     </section>
 
-    <section class="panel">
-      <h2>
+    <section class="panel workboard-todos" aria-labelledby="todo-feed-title">
+      <h2 id="todo-feed-title">
         <span class="info-wrap">
           <span class="info-label">Todo Feed <span class="json-key">runs[].todos[]</span></span>
           <button class="info-button" type="button" aria-label="Explain Todo Feed" aria-expanded="false" aria-controls="info-workboard-todo-feed">?</button>
@@ -613,7 +634,9 @@
           </span>
         </span>
       </h2>
-      <div id="todo-feed" class="todo-feed"></div>
+      <div id="todo-feed" class="todo-feed">
+        <div class="empty">Loading todos...</div>
+      </div>
       <div class="assumptions-box">
         <h3>Assumptions / Open Questions</h3>
         <ul>
@@ -623,6 +646,22 @@
       </div>
     </section>
   </main>
+
+  <aside id="run-drawer" class="drawer" aria-hidden="true">
+    <div class="drawer-scrim" data-drawer-close></div>
+    <div class="drawer-panel" role="dialog" aria-modal="true" aria-labelledby="drawer-title">
+      <div class="drawer-header">
+        <div>
+          <div class="drawer-title" id="drawer-title">Run detail</div>
+          <div class="drawer-subtitle" id="drawer-subtitle">Select a run to inspect.</div>
+        </div>
+        <button class="button ghost" type="button" data-drawer-close>Close</button>
+      </div>
+      <div id="drawer-body" class="drawer-section">
+        <div class="empty">No run selected.</div>
+      </div>
+    </div>
+  </aside>
 
   <script src="assets/control_room.js"></script>
 </body>

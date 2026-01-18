@@ -1,5 +1,7 @@
 const DEFAULT_SNAPSHOT_PATH = "../state/control_room_latest.json";
 const POLL_INTERVAL_MS = 8000;
+const STALE_THRESHOLD_SECONDS = 30;
+const REFRESH_LABEL_INTERVAL_MS = 1000;
 
 const statusClasses = {
   running: "status-running",
@@ -190,6 +192,7 @@ const explainers = {
     future: "Runner + alerting pipeline link alerts to runs.",
   },
 };
+
 const safeId = (value) =>
   String(value || "unknown").replace(/[^a-z0-9_-]/gi, "-").toLowerCase();
 
@@ -286,6 +289,28 @@ const fetchSnapshot = async (path) => {
   return response.json();
 };
 
+const normalizeSnapshot = (raw = {}) => {
+  const asOf = raw.as_of || raw.meta?.timestamp || null;
+  const health = raw.health || {};
+  const dataFreshness =
+    health.data_freshness_seconds ??
+    (asOf ? Math.max(0, Math.floor((Date.now() - new Date(asOf).getTime()) / 1000)) : null);
+
+  return {
+    schema_version: raw.schema_version || "control-room-snapshot-v0",
+    as_of: asOf,
+    health: {
+      status: health.status || raw.meta?.global_status || "Unknown",
+      data_freshness_seconds: dataFreshness,
+      active_alerts_count:
+        health.active_alerts_count ??
+        (Array.isArray(raw.alerts) ? raw.alerts.length : 0),
+    },
+    projects: toArray(raw.projects),
+    alerts: toArray(raw.alerts),
+  };
+};
+
 const buildRunIndex = (snapshot) => {
   const projects = toArray(snapshot.projects);
   const runs = [];
@@ -313,12 +338,26 @@ const setStatusChip = (el, status) => {
   el.className = `chip status ${statusClasses[normalized] || "status-unknown"}`;
 };
 
-const renderHeader = (snapshot) => {
+const setText = (id, value) => {
+  const el = byId(id);
+  if (!el) return;
+  el.textContent = safeText(value);
+};
+
+const setPillState = (el, label, className) => {
+  if (!el) return;
+  el.textContent = label;
+  el.classList.remove("stale", "offline");
+  if (className) el.classList.add(className);
+};
+
+const renderHeader = (snapshot, lastRefreshAt) => {
   setText("snapshot-time", snapshot.as_of);
   setText("snapshot-health", safeText(snapshot.health?.status, "Nominal"));
   setText(
     "snapshot-freshness",
-    snapshot.health?.data_freshness_seconds !== undefined
+    snapshot.health?.data_freshness_seconds !== undefined &&
+      snapshot.health?.data_freshness_seconds !== null
       ? `${snapshot.health.data_freshness_seconds}s`
       : "—"
   );
@@ -328,12 +367,21 @@ const renderHeader = (snapshot) => {
       ? snapshot.health.active_alerts_count
       : "0"
   );
-};
+  setText("snapshot-relative", snapshot.as_of ? relativeTime(snapshot.as_of) : "—");
+  setText(
+    "snapshot-refreshed",
+    lastRefreshAt ? relativeTime(lastRefreshAt) : "—"
+  );
 
-const setText = (id, value) => {
-  const el = byId(id);
-  if (!el) return;
-  el.textContent = safeText(value);
+  const staleness = snapshot.health?.data_freshness_seconds;
+  const staleLabel =
+    staleness === null || staleness === undefined
+      ? "Unknown"
+      : staleness > STALE_THRESHOLD_SECONDS
+      ? "Stale"
+      : "Fresh";
+  const staleEl = byId("snapshot-stale");
+  setPillState(staleEl, staleLabel, staleLabel === "Stale" ? "stale" : "");
 };
 
 const renderFilters = (snapshot) => {
@@ -408,6 +456,20 @@ const applyFilterFromQuery = () => {
   applyValue("filter-search", "search");
 };
 
+const updateFilterQuery = () => {
+  const filters = collectFilters();
+  const params = new URLSearchParams(window.location.search);
+  Object.entries(filters).forEach(([key, value]) => {
+    if (value) {
+      params.set(key, value);
+    } else {
+      params.delete(key);
+    }
+  });
+  const newUrl = `${window.location.pathname}?${params.toString()}`;
+  window.history.replaceState({}, "", newUrl);
+};
+
 const collectFilters = () => ({
   project: byId("filter-project")?.value || "",
   track: byId("filter-track")?.value || "",
@@ -435,6 +497,12 @@ const matchesFilter = (item, filters) => {
     if (!haystack.includes(filters.search)) return false;
   }
   return true;
+};
+
+const setEmptyState = (id, message, isError = false) => {
+  const el = byId(id);
+  if (!el) return;
+  el.innerHTML = `<div class="empty${isError ? " error" : ""}">${message}</div>`;
 };
 
 const renderWorkboard = (snapshot) => {
@@ -479,6 +547,29 @@ const renderWorkboard = (snapshot) => {
     );
     statusWrap.appendChild(statusChip);
 
+    const actions = document.createElement("div");
+    actions.className = "run-actions";
+
+    const toggleId = `run-extra-${safeId(run.run_id)}`;
+    const toggleButton = document.createElement("button");
+    toggleButton.type = "button";
+    toggleButton.className = "button ghost";
+    toggleButton.setAttribute("aria-expanded", "false");
+    toggleButton.setAttribute("aria-controls", toggleId);
+    toggleButton.textContent = "Expand";
+
+    const openButton = document.createElement("button");
+    openButton.type = "button";
+    openButton.className = "button primary";
+    openButton.id = `open-run-${safeId(run.run_id)}`;
+    openButton.textContent = "Open";
+    openButton.addEventListener("click", () => {
+      openDrawer({ project, track, run });
+    });
+
+    actions.appendChild(toggleButton);
+    actions.appendChild(openButton);
+
     const meta = document.createElement("div");
     meta.className = "run-meta";
     meta.innerHTML = `
@@ -507,6 +598,10 @@ const renderWorkboard = (snapshot) => {
         "projects[].tracks[].runs[].next_action"
       )} ${safeText(run.next_action)}</div>
     `;
+
+    const extra = document.createElement("div");
+    extra.className = "run-extra";
+    extra.id = toggleId;
 
     const metrics = document.createElement("div");
     metrics.className = "chip-row";
@@ -546,17 +641,6 @@ const renderWorkboard = (snapshot) => {
       artifacts.appendChild(link);
     });
 
-    const todoDrawer = document.createElement("details");
-    todoDrawer.className = "todo-drawer";
-    const summary = document.createElement("summary");
-    summary.innerHTML = `${explainPanelHtml(
-      `info-run-todos-${safeId(run.run_id)}`,
-      "Todos",
-      explainers.runTodos,
-      "projects[].tracks[].runs[].todos[]"
-    )} <span class="todo-count">(${toArray(run.todos).length})</span>`;
-    todoDrawer.appendChild(summary);
-
     const todoList = document.createElement("div");
     todoList.className = "todo-list";
 
@@ -590,16 +674,23 @@ const renderWorkboard = (snapshot) => {
       });
     }
 
-    todoDrawer.appendChild(todoList);
+    extra.appendChild(metrics);
+    if (artifacts.children.length > 0) extra.appendChild(artifacts);
+    extra.appendChild(todoList);
+
+    toggleButton.addEventListener("click", () => {
+      const isOpen = extra.classList.toggle("is-open");
+      toggleButton.setAttribute("aria-expanded", String(isOpen));
+      toggleButton.textContent = isOpen ? "Collapse" : "Expand";
+    });
 
     header.appendChild(title);
     header.appendChild(statusWrap);
+    header.appendChild(actions);
 
     card.appendChild(header);
     card.appendChild(meta);
-    if (metrics.children.length > 0) card.appendChild(metrics);
-    if (artifacts.children.length > 0) card.appendChild(artifacts);
-    card.appendChild(todoDrawer);
+    card.appendChild(extra);
 
     list.appendChild(card);
   });
@@ -720,7 +811,13 @@ const renderHierarchy = (snapshot) => {
     return node;
   };
 
-  toArray(snapshot.projects).forEach((project) => {
+  const projects = toArray(snapshot.projects);
+  if (projects.length === 0) {
+    tree.innerHTML = '<div class="empty">No hierarchy data available.</div>';
+    return;
+  }
+
+  projects.forEach((project) => {
     const projectNode = createNode(
       "project",
       project.project_id,
@@ -850,7 +947,7 @@ const renderNodeDetail = (panel, entry) => {
   }
 
   panel.appendChild(header);
-  panel.appendChild(list);
+  if (list.children.length > 0) panel.appendChild(list);
   if (artifactRefs.length > 0) panel.appendChild(artifacts);
 };
 
@@ -904,8 +1001,197 @@ const renderAlerts = (snapshot) => {
   });
 };
 
+const renderDrawerContent = (payload) => {
+  const drawerBody = byId("drawer-body");
+  const drawerTitle = byId("drawer-title");
+  const drawerSubtitle = byId("drawer-subtitle");
+  if (!drawerBody || !drawerTitle || !drawerSubtitle) return;
+
+  if (!payload) {
+    drawerTitle.textContent = "Run detail";
+    drawerSubtitle.textContent = "Select a run to inspect.";
+    drawerBody.innerHTML = '<div class="empty">No run selected.</div>';
+    return;
+  }
+
+  const { project, track, run } = payload;
+  drawerTitle.textContent = `Run · ${safeText(run.run_id)}`;
+  drawerSubtitle.textContent = `${safeText(project.name)} · ${safeText(track.name)}`;
+  drawerBody.innerHTML = "";
+
+  const summary = document.createElement("div");
+  summary.className = "drawer-section";
+  summary.innerHTML = `
+    <div class="detail-list">
+      <div class="detail-row"><span>Status</span><span>${safeText(run.status)}</span></div>
+      <div class="detail-row"><span>Owner</span><span>${safeText(run.owner?.display_name)}</span></div>
+      <div class="detail-row"><span>Next action</span><span>${safeText(run.next_action)}</span></div>
+      <div class="detail-row"><span>Last update</span><span>${relativeTime(run.last_update_at)}</span></div>
+      <div class="detail-row"><span>Failures</span><span>${safeText(run.failure_count, 0)}</span></div>
+    </div>
+  `;
+
+  const metrics = document.createElement("div");
+  metrics.className = "drawer-section";
+  if (toArray(run.metrics_summary).length > 0) {
+    const label = document.createElement("div");
+    label.className = "detail-subtitle";
+    label.textContent = "Metrics";
+    metrics.appendChild(label);
+    const chips = document.createElement("div");
+    chips.className = "chip-row";
+    toArray(run.metrics_summary).forEach((metric) => {
+      const chip = document.createElement("span");
+      chip.className = "chip neutral";
+      chip.textContent = `${metric.name}: ${metricValue(metric)}`;
+      chips.appendChild(chip);
+    });
+    metrics.appendChild(chips);
+  } else {
+    metrics.innerHTML = '<div class="empty">No metrics provided.</div>';
+  }
+
+  const artifacts = document.createElement("div");
+  artifacts.className = "drawer-section";
+  if (toArray(run.artifact_refs).length > 0) {
+    const label = document.createElement("div");
+    label.className = "detail-subtitle";
+    label.textContent = "Artifacts";
+    artifacts.appendChild(label);
+    const links = document.createElement("div");
+    links.className = "artifact-links";
+    toArray(run.artifact_refs).forEach((artifact) => {
+      const link = document.createElement("a");
+      link.href = artifact.href || "#";
+      link.textContent = artifact.label || artifact.artifact_id;
+      links.appendChild(link);
+    });
+    artifacts.appendChild(links);
+  } else {
+    artifacts.innerHTML = '<div class="empty">No artifacts linked.</div>';
+  }
+
+  const todos = document.createElement("div");
+  todos.className = "drawer-section";
+  const todoLabel = document.createElement("div");
+  todoLabel.className = "detail-subtitle";
+  todoLabel.textContent = "Todos";
+  todos.appendChild(todoLabel);
+
+  const todoList = document.createElement("div");
+  todoList.className = "todo-list";
+  if (toArray(run.todos).length === 0) {
+    todoList.innerHTML = '<div class="empty">No todos assigned.</div>';
+  } else {
+    toArray(run.todos).forEach((todo) => {
+      const todoItem = document.createElement("div");
+      todoItem.className = "todo-item";
+      todoItem.innerHTML = `
+        <div>
+          <div class="todo-title">${safeText(todo.title)}</div>
+          <div class="todo-meta">${safeText(todo.status)} · ${relativeTime(
+        todo.updated_at
+      )}</div>
+        </div>
+      `;
+      todoList.appendChild(todoItem);
+    });
+  }
+  todos.appendChild(todoList);
+
+  drawerBody.appendChild(summary);
+  drawerBody.appendChild(metrics);
+  drawerBody.appendChild(artifacts);
+  drawerBody.appendChild(todos);
+};
+
+let lastRefreshAt = null;
+let refreshTimer = null;
+let focusTrapCleanup = null;
+
+const trapFocus = (container) => {
+  const selectors = [
+    "a[href]",
+    "button",
+    "textarea",
+    "input",
+    "select",
+    "[tabindex]:not([tabindex='-1'])",
+  ];
+  const focusable = Array.from(container.querySelectorAll(selectors.join(", ")))
+    .filter((el) => !el.hasAttribute("disabled"));
+  if (focusable.length === 0) return () => {};
+  const first = focusable[0];
+  const last = focusable[focusable.length - 1];
+
+  const handleKeydown = (event) => {
+    if (event.key !== "Tab") return;
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  };
+
+  container.addEventListener("keydown", handleKeydown);
+  return () => container.removeEventListener("keydown", handleKeydown);
+};
+
+const openDrawer = (payload) => {
+  const drawer = byId("run-drawer");
+  if (!drawer) return;
+  const panel = drawer.querySelector(".drawer-panel");
+  const closeButton = drawer.querySelector("[data-drawer-close]");
+  const lastFocused = document.activeElement;
+
+  renderDrawerContent(payload);
+  drawer.classList.add("is-open");
+  drawer.setAttribute("aria-hidden", "false");
+
+  if (closeButton) {
+    closeButton.focus();
+  }
+
+  if (panel) {
+    if (focusTrapCleanup) focusTrapCleanup();
+    focusTrapCleanup = trapFocus(panel);
+  }
+
+  drawer.dataset.lastFocusId = lastFocused?.id || "";
+};
+
+const closeDrawer = () => {
+  const drawer = byId("run-drawer");
+  if (!drawer) return;
+  drawer.classList.remove("is-open");
+  drawer.setAttribute("aria-hidden", "true");
+  if (focusTrapCleanup) focusTrapCleanup();
+  focusTrapCleanup = null;
+
+  const lastFocusId = drawer.dataset.lastFocusId;
+  if (lastFocusId) {
+    const el = byId(lastFocusId);
+    if (el) el.focus();
+  }
+};
+
+const initDrawer = () => {
+  const drawer = byId("run-drawer");
+  if (!drawer) return;
+  drawer.querySelectorAll("[data-drawer-close]").forEach((el) => {
+    el.addEventListener("click", closeDrawer);
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && drawer.classList.contains("is-open")) {
+      closeDrawer();
+    }
+  });
+};
+
 const renderSnapshot = (snapshot) => {
-  renderHeader(snapshot);
+  renderHeader(snapshot, lastRefreshAt);
   renderFilters(snapshot);
   renderWorkboard(snapshot);
   renderSpotlight(snapshot);
@@ -915,20 +1201,43 @@ const renderSnapshot = (snapshot) => {
   initExplainPanels();
 };
 
+const setPollingStatus = (status) => {
+  const label = byId("snapshot-status");
+  if (!label) return;
+  label.classList.remove("offline");
+  if (status === "Offline") {
+    label.classList.add("offline");
+  }
+  label.textContent = status;
+};
+
 const startPolling = (path) => {
-  const statusLabel = byId("snapshot-status");
   const load = async () => {
     try {
-      const snapshot = await fetchSnapshot(path);
+      setPollingStatus("Loading");
+      const raw = await fetchSnapshot(path);
+      const snapshot = normalizeSnapshot(raw);
+      lastRefreshAt = new Date().toISOString();
       renderSnapshot(snapshot);
-      if (statusLabel) statusLabel.textContent = "Live";
+      setPollingStatus("Live");
     } catch (error) {
-      if (statusLabel) statusLabel.textContent = "Offline";
+      setPollingStatus("Offline");
+      setEmptyState("workboard-list", "Snapshot unavailable.", true);
+      setEmptyState("failure-spotlight", "Snapshot unavailable.", true);
+      setEmptyState("todo-feed", "Snapshot unavailable.", true);
+      setEmptyState("hierarchy-tree", "Snapshot unavailable.", true);
+      setEmptyState("alerts-rail", "Snapshot unavailable.", true);
       console.error(error);
     }
   };
 
   load();
+  if (refreshTimer) clearInterval(refreshTimer);
+  refreshTimer = setInterval(() => {
+    if (lastRefreshAt) {
+      setText("snapshot-refreshed", relativeTime(lastRefreshAt));
+    }
+  }, REFRESH_LABEL_INTERVAL_MS);
   setInterval(load, POLL_INTERVAL_MS);
 };
 
@@ -944,10 +1253,18 @@ const initControls = () => {
     const control = byId(id);
     if (!control) return;
     control.addEventListener("change", () => {
-      fetchSnapshot(getSnapshotPath()).then(renderSnapshot).catch(console.error);
+      updateFilterQuery();
+      fetchSnapshot(getSnapshotPath())
+        .then(normalizeSnapshot)
+        .then(renderSnapshot)
+        .catch(console.error);
     });
     control.addEventListener("input", () => {
-      fetchSnapshot(getSnapshotPath()).then(renderSnapshot).catch(console.error);
+      updateFilterQuery();
+      fetchSnapshot(getSnapshotPath())
+        .then(normalizeSnapshot)
+        .then(renderSnapshot)
+        .catch(console.error);
     });
   });
 };
@@ -969,6 +1286,7 @@ const boot = () => {
   initControls();
   initExplainPanels();
   initJsonKeyToggle();
+  initDrawer();
   startPolling(getSnapshotPath());
 };
 

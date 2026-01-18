@@ -1,0 +1,135 @@
+# ControlRoomSnapshot v0 (UI Contract)
+
+**Purpose:** Provide a stable, additive JSON shape for the Control Room UI (Workboard + Hierarchy). The UI tolerates missing fields and renders “—” or empty states where data is absent.
+
+## Snapshot sources (Phase 0)
+
+- **Primary:** `state/control_room_latest.json` (static snapshot for dashboard pages).
+- **Optional:** Query string override via `?source=../state/control_room_latest.json` or other snapshot paths under `/state`.
+- **Note:** Phase 0 is snapshot-driven. Phase 1 may swap sources to API/DB, but should preserve this shape (additive only).
+
+## ControlRoomSnapshot v0 (top-level)
+
+```json
+{
+  "schema_version": "control-room-snapshot-v0",
+  "as_of": "2026-01-15T02:47:06.105947Z",
+  "health": {
+    "status": "Nominal",
+    "data_freshness_seconds": 12,
+    "active_alerts_count": 2
+  },
+  "projects": ["Project"],
+  "alerts": ["Alert"]
+}
+```
+
+### Field notes
+
+- `as_of`: ISO timestamp for the snapshot.
+- `health.status`: High-level label (Nominal / Warning / Critical).
+- `health.data_freshness_seconds`: Seconds since last refresh. If omitted, UI derives freshness from `as_of`.
+- `health.active_alerts_count`: Optional explicit count; defaults to `alerts.length`.
+
+## Project
+
+```json
+{
+  "project_id": "proj-atlas",
+  "name": "Atlas QA",
+  "status": "running",
+  "tracks": ["Track"]
+}
+```
+
+## Track
+
+```json
+{
+  "track_id": "track-redteam",
+  "type": "redteam",
+  "name": "Adversarial / Red Team",
+  "status": "running",
+  "runs": ["Run"]
+}
+```
+
+## Run
+
+```json
+{
+  "run_id": "run-redteam-044",
+  "status": "failed",
+  "last_update_at": "2026-01-15T02:29:06.105947Z",
+  "owner": {"Agent"},
+  "failure_count": 3,
+  "next_action": "Patch prompt filtering",
+  "todos": ["Todo"],
+  "metrics_summary": ["Metric"],
+  "artifact_refs": ["ArtifactRef"]
+}
+```
+
+## Agent (owner)
+
+```json
+{
+  "agent_id": "agent-red-02",
+  "display_name": "Red-02",
+  "role": "attack",
+  "status": "active"
+}
+```
+
+## Todo
+
+```json
+{
+  "todo_id": "todo-redteam-011",
+  "title": "Reproduce jailbreak prompt",
+  "status": "in_progress",
+  "owner_agent_id": "agent-red-02",
+  "updated_at": "2026-01-15T02:27:06.105947Z",
+  "blocking_reason": "Waiting for trace artifact",
+  "artifact_refs": ["ArtifactRef"]
+}
+```
+
+## Metric
+
+```json
+{
+  "name": "Exploit rate",
+  "value": "18%",
+  "unit": null
+}
+```
+
+## Alert
+
+```json
+{
+  "alert_id": "alert-022",
+  "severity": "warn",
+  "run_id": "run-redteam-044",
+  "message": "Exploit resurfaced after patch; manual review required.",
+  "timestamp": "2026-01-15T02:37:06.105947Z",
+  "artifact_refs": ["ArtifactRef"]
+}
+```
+
+## ArtifactRef
+
+```json
+{
+  "artifact_id": "artifact-attack-77",
+  "label": "attack payload",
+  "href": "/records/artifacts/attack-77.json"
+}
+```
+
+## Compatibility rules
+
+- **Additive only:** New fields must not break existing UI.
+- **Tolerant reads:** UI treats missing arrays as empty and missing scalars as “—”.
+- **Stable IDs:** Use stable `project_id`, `track_id`, `run_id`, `todo_id`, `alert_id` when possible.
