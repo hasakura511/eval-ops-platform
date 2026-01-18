@@ -42,3 +42,11 @@
 - **Keyboard focus order:** Should be re-validated with a real keyboard walk-through after adding more actions.
 - **ARIA labels:** If additional controls are added, verify that labels and roles remain consistent and unambiguous.
 - **Contrast checks:** Dark mode uses tokens, but high-contrast verification should be done with a contrast checker.
+
+## Phase 0 Acceptance Checklist
+
+- [x] Paths verified (workboard/hierarchy loading via `python -m http.server`).
+- [ ] Drawer keyboard behavior verified (focus trap + ESC close).
+- [ ] Staleness threshold verified (`STALE_THRESHOLD_SECONDS`).
+- [ ] Empty/loading/error states verified (no runs, no alerts, fetch fail).
+- [ ] Hierarchy scaling strategy stated (nested groups + scroll).

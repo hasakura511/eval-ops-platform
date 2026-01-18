@@ -1,4 +1,5 @@
 const DEFAULT_SNAPSHOT_PATH = "../state/control_room_latest.json";
+const LEGACY_SNAPSHOT_PATH = "../state/latest.json";
 const POLL_INTERVAL_MS = 8000;
 const STALE_THRESHOLD_SECONDS = 30;
 const REFRESH_LABEL_INTERVAL_MS = 1000;
@@ -289,12 +290,23 @@ const fetchSnapshot = async (path) => {
   return response.json();
 };
 
-const normalizeSnapshot = (raw = {}) => {
-  const asOf = raw.as_of || raw.meta?.timestamp || null;
+const normalizeTimestamp = (value) => {
+  if (!value) return null;
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
+};
+
+const computeFreshness = (asOf) =>
+  asOf ? Math.max(0, Math.floor((Date.now() - new Date(asOf).getTime()) / 1000)) : null;
+
+const normalizeSeverity = (value) =>
+  typeof value === "string" ? value.toLowerCase() : "info";
+
+const normalizeControlRoomSnapshot = (raw = {}) => {
+  const asOf = normalizeTimestamp(raw.as_of || raw.meta?.timestamp);
   const health = raw.health || {};
   const dataFreshness =
-    health.data_freshness_seconds ??
-    (asOf ? Math.max(0, Math.floor((Date.now() - new Date(asOf).getTime()) / 1000)) : null);
+    health.data_freshness_seconds ?? computeFreshness(asOf);
 
   return {
     schema_version: raw.schema_version || "control-room-snapshot-v0",
@@ -308,6 +320,104 @@ const normalizeSnapshot = (raw = {}) => {
     },
     projects: toArray(raw.projects),
     alerts: toArray(raw.alerts),
+  };
+};
+
+const mapLegacyStatus = (value) => {
+  const status = typeof value === "string" ? value.toUpperCase() : "UNKNOWN";
+  if (status.includes("CRITICAL") || status.includes("AUDIT_FAIL")) return "failed";
+  if (status.includes("DEREGULATION") || status.includes("HIGH_ENTROPY")) return "blocked";
+  if (status.includes("SANDBOX")) return "paused";
+  if (status.includes("NOMINAL")) return "running";
+  return "pending";
+};
+
+const artifactRefFromLegacy = (ref) => {
+  if (!ref) return null;
+  if (typeof ref !== "string") return null;
+  if (ref.startsWith("artifact:")) {
+    const artifactId = ref.replace("artifact:", "");
+    return {
+      artifact_id: artifactId,
+      label: artifactId,
+      href: `/records/artifacts/${artifactId}.json`,
+    };
+  }
+  return {
+    artifact_id: ref,
+    label: ref,
+    href: null,
+  };
+};
+
+const normalizeLegacySnapshot = (raw = {}) => {
+  const asOf = normalizeTimestamp(raw.meta?.timestamp);
+  const status = raw.meta?.global_status || "Unknown";
+  const units = toArray(raw.B_t?.A_t?.units);
+  const projectId = raw.meta?.project_id || "legacy-project";
+  const runs = units.map((unit) => ({
+    run_id: unit.unit_id || "unit",
+    status: mapLegacyStatus(status),
+    last_update_at: asOf,
+    owner: {
+      agent_id: unit.unit_id || "unit",
+      display_name: unit.jurisdiction || unit.unit_id || "unit",
+      role: "unit",
+      status: "active",
+    },
+    failure_count: toArray(unit.variance_memos).length,
+    next_action: unit.mandate_ref ? `Review ${unit.mandate_ref}` : "Review mandate",
+    todos: [],
+    metrics_summary: [
+      { name: "D_i", value: unit.D_i ?? "—", unit: null },
+      {
+        name: "Discretion spent",
+        value: unit.discretion_spent_this_iter ?? "—",
+        unit: null,
+      },
+    ],
+    artifact_refs: [
+      artifactRefFromLegacy(unit.mandate_ref),
+      ...toArray(unit.variance_memos).map(artifactRefFromLegacy),
+    ].filter(Boolean),
+  }));
+
+  const alerts = toArray(raw.alerts).map((alert, index) => ({
+    alert_id: alert.alert_id || `legacy-alert-${index + 1}`,
+    severity: normalizeSeverity(alert.severity),
+    run_id: alert.run_id || null,
+    message: alert.message || alert.type || "Legacy alert",
+    timestamp: asOf,
+    artifact_refs: toArray(alert.evidence_refs)
+      .map(artifactRefFromLegacy)
+      .filter(Boolean),
+  }));
+
+  return {
+    schema_version: "control-room-snapshot-v0",
+    as_of: asOf,
+    health: {
+      status,
+      data_freshness_seconds: computeFreshness(asOf),
+      active_alerts_count: alerts.length,
+    },
+    projects: [
+      {
+        project_id: projectId,
+        name: projectId,
+        status: mapLegacyStatus(status),
+        tracks: [
+          {
+            track_id: "legacy-units",
+            type: "legacy",
+            name: "Legacy Units",
+            status: mapLegacyStatus(status),
+            runs,
+          },
+        ],
+      },
+    ],
+    alerts,
   };
 };
 
@@ -1211,12 +1321,28 @@ const setPollingStatus = (status) => {
   label.textContent = status;
 };
 
-const startPolling = (path) => {
+const loadSnapshotWithFallback = async () => {
+  const sources = getSnapshotSources();
+  let lastError = null;
+  for (const source of sources) {
+    try {
+      const raw = await fetchSnapshot(source.path);
+      if (source.type === "legacy") {
+        return normalizeLegacySnapshot(raw);
+      }
+      return normalizeControlRoomSnapshot(raw);
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  throw lastError || new Error("No snapshot sources available");
+};
+
+const startPolling = () => {
   const load = async () => {
     try {
       setPollingStatus("Loading");
-      const raw = await fetchSnapshot(path);
-      const snapshot = normalizeSnapshot(raw);
+      const snapshot = await loadSnapshotWithFallback();
       lastRefreshAt = new Date().toISOString();
       renderSnapshot(snapshot);
       setPollingStatus("Live");
@@ -1254,17 +1380,11 @@ const initControls = () => {
     if (!control) return;
     control.addEventListener("change", () => {
       updateFilterQuery();
-      fetchSnapshot(getSnapshotPath())
-        .then(normalizeSnapshot)
-        .then(renderSnapshot)
-        .catch(console.error);
+      loadSnapshotWithFallback().then(renderSnapshot).catch(console.error);
     });
     control.addEventListener("input", () => {
       updateFilterQuery();
-      fetchSnapshot(getSnapshotPath())
-        .then(normalizeSnapshot)
-        .then(renderSnapshot)
-        .catch(console.error);
+      loadSnapshotWithFallback().then(renderSnapshot).catch(console.error);
     });
   });
 };
@@ -1277,9 +1397,23 @@ const initJsonKeyToggle = () => {
   });
 };
 
-const getSnapshotPath = () => {
+const getSnapshotSources = () => {
   const params = new URLSearchParams(window.location.search);
-  return params.get("source") || DEFAULT_SNAPSHOT_PATH;
+  const override = params.get("source");
+  const apiOverride = params.get("api");
+  const apiEndpoint =
+    apiOverride || window.CONTROL_ROOM_API_ENDPOINT || null;
+
+  const sources = [];
+  if (override) {
+    sources.push({ type: "override", path: override });
+  }
+  sources.push({ type: "control-room", path: DEFAULT_SNAPSHOT_PATH });
+  sources.push({ type: "legacy", path: LEGACY_SNAPSHOT_PATH });
+  if (apiEndpoint) {
+    sources.push({ type: "api", path: apiEndpoint });
+  }
+  return sources;
 };
 
 const boot = () => {
@@ -1287,7 +1421,7 @@ const boot = () => {
   initExplainPanels();
   initJsonKeyToggle();
   initDrawer();
-  startPolling(getSnapshotPath());
+  startPolling();
 };
 
 boot();

@@ -31,6 +31,26 @@
 - `health.data_freshness_seconds`: Seconds since last refresh. If omitted, UI derives freshness from `as_of`.
 - `health.active_alerts_count`: Optional explicit count; defaults to `alerts.length`.
 
+## Required vs optional fields
+
+**Required (Phase 0 UI stability):**
+
+- `schema_version` (string, recommended but tolerated if missing)
+- `as_of` (timestamp)
+- `projects` (array, can be empty)
+- `alerts` (array, can be empty)
+
+**Optional (UI will render placeholders if absent):**
+
+- `health` (object)
+- `projects[].tracks[]`
+- `tracks[].runs[]`
+- `runs[].owner`
+- `runs[].metrics_summary[]`
+- `runs[].artifact_refs[]`
+- `runs[].todos[]`
+- `alerts[].artifact_refs[]`
+
 ## Project
 
 ```json
@@ -133,3 +153,27 @@
 - **Additive only:** New fields must not break existing UI.
 - **Tolerant reads:** UI treats missing arrays as empty and missing scalars as “—”.
 - **Stable IDs:** Use stable `project_id`, `track_id`, `run_id`, `todo_id`, `alert_id` when possible.
+- **Legacy-safe:** Legacy snapshots are mapped into this shape by a client adapter; do not remove fields needed by the adapter.
+
+## Legacy mapping (state/latest.json → v0)
+
+| Legacy field | v0 field | Notes |
+| --- | --- | --- |
+| `meta.timestamp` | `as_of` | Used for snapshot time and freshness. |
+| `meta.global_status` | `health.status` | Also mapped to run/track/project status. |
+| `meta.project_id` | `projects[].project_id` | Used as the single legacy project id/name. |
+| `B_t.A_t.units[]` | `projects[].tracks[].runs[]` | Units become runs under `track_id = legacy-units`. |
+| `units[].variance_memos[]` | `runs[].failure_count` | Count of variance memos. |
+| `units[].mandate_ref` | `runs[].next_action` / `runs[].artifact_refs[]` | Rendered as “Review …” action and artifact link. |
+| `alerts[]` | `alerts[]` | Severity lowercased, evidence refs mapped to artifact links. |
+
+## Data source priority & switching
+
+1. **Primary:** `state/control_room_latest.json` (ControlRoomSnapshot v0)
+2. **Fallback:** `state/latest.json` (legacy snapshot mapped to v0)
+3. **Optional:** API endpoint (if configured)
+
+**Switching sources:**
+
+- `?source=../state/samples/control_room_empty.json` — override with any snapshot path.
+- `?api=https://example.com/control-room-snapshot.json` — optional API endpoint (only if provided).
