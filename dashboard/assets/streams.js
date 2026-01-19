@@ -123,6 +123,18 @@ const manifestHashFromPath = (path) => {
   return match ? match[1] : null;
 };
 
+const packetFilenameForId = (streamId, packetId) => {
+  if (!packetId || !packetId.startsWith(`${streamId}/`)) {
+    return null;
+  }
+  const seq = packetId.split("/")[1];
+  if (!seq) {
+    return null;
+  }
+  const packetFiles = state.index?.streams?.[streamId]?.packet_files || [];
+  return packetFiles.find((file) => file.startsWith(seq)) || null;
+};
+
 const renderStreamList = () => {
   const container = byId("stream-list");
   const index = state.index || { streams: {} };
@@ -143,6 +155,9 @@ const renderStreamList = () => {
       const summary = snapshotStreams[streamId] || {};
       const status = summary.status || "unknown";
       const approval = summary.approval_state || "none";
+      const forkBadge = summary.has_fork
+        ? '<span class="fork-badge">Fork</span>'
+        : "";
       return `
         <button class="stream-card" data-stream-id="${streamId}">
           <div class="stream-card-title">${streamId}</div>
@@ -150,6 +165,7 @@ const renderStreamList = () => {
             <span>Latest seq: ${index.streams[streamId].latest_seq}</span>
             <span>Status: ${status}</span>
             <span>Approval: ${approval}</span>
+            ${forkBadge}
           </div>
         </button>
       `;
@@ -181,6 +197,86 @@ const renderPacketChain = (streamId) => {
   container.querySelectorAll("[data-packet-file]").forEach((button) => {
     button.addEventListener("click", () => {
       loadPacket(streamId, button.dataset.packetFile);
+    });
+  });
+};
+
+const renderApprovalSummary = async (streamId) => {
+  const container = byId("approval-summary");
+  const summary = (state.snapshot?.streams || []).find(
+    (stream) => stream.id === streamId
+  );
+  if (!summary) {
+    container.innerHTML = '<div class="empty">Approval state unavailable.</div>';
+    return;
+  }
+  const approvalState = summary.approval_state || "none";
+  const packetFiles = state.index?.streams?.[streamId]?.packet_files || [];
+  const reviewFile = [...packetFiles].reverse().find((file) => file.includes(".review."));
+  let rationale = "No rationale recorded.";
+  if (reviewFile) {
+    const text = await fetchTextWithFallback(
+      API_PACKET(streamId, reviewFile),
+      LOCAL_PACKET(streamId, reviewFile)
+    );
+    const parsed = parsePacket(text);
+    if (parsed?.sections?.ACCEPT?.length) {
+      const rationaleLine = parsed.sections.ACCEPT.find((item) =>
+        item.toLowerCase().startsWith("rationale:")
+      );
+      rationale = (rationaleLine || parsed.sections.ACCEPT[0]).replace(
+        /^rationale:\s*/i,
+        ""
+      );
+    }
+  }
+  const snippet =
+    rationale.length > 120 ? `${rationale.slice(0, 120)}…` : rationale;
+  container.innerHTML = `
+    <div class="approval-title">Approval</div>
+    <div class="approval-status">State: ${approvalState}</div>
+    <details class="approval-details">
+      <summary>${snippet}</summary>
+      <p>${rationale}</p>
+    </details>
+  `;
+};
+
+const renderForkSummary = (streamId) => {
+  const container = byId("fork-summary");
+  const summary = (state.snapshot?.streams || []).find(
+    (stream) => stream.id === streamId
+  );
+  if (!summary || !summary.has_fork) {
+    container.innerHTML = '<div class="empty">No fork detected.</div>';
+    return;
+  }
+  const children = summary.fork_children || [];
+  if (!children.length) {
+    container.innerHTML = '<div class="empty">No fork children listed.</div>';
+    return;
+  }
+  const links = children
+    .map((packetId) => {
+      const filename = packetFilenameForId(streamId, packetId);
+      if (!filename) {
+        return `<span class="fork-link">${packetId}</span>`;
+      }
+      return `<button class="fork-link" data-packet-id="${packetId}">${packetId}</button>`;
+    })
+    .join("");
+  container.innerHTML = `
+    <div class="approval-title">Fork detected</div>
+    <span class="fork-badge">Fork</span>
+    <div class="fork-links">${links}</div>
+  `;
+  container.querySelectorAll("[data-packet-id]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const packetId = button.dataset.packetId;
+      const filename = packetFilenameForId(streamId, packetId);
+      if (filename) {
+        loadPacket(streamId, filename);
+      }
     });
   });
 };
@@ -359,6 +455,8 @@ const selectStream = async (streamId) => {
   renderPacketChain(streamId);
   renderTimeline(streamId);
   updateApproveButton(streamId);
+  renderForkSummary(streamId);
+  await renderApprovalSummary(streamId);
 
   const packetFiles = state.index?.streams?.[streamId]?.packet_files || [];
   if (packetFiles.length) {

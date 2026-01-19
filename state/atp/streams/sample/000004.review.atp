@@ -1,0 +1,34 @@
+ATP/0.1
+ID: sample/000004
+TS: 2024-02-01T10:25:00Z
+MODE: REVIEW
+TASK: control-room-bootstrap
+STATE: git=sample dirty=0
+PARENT: sample/000003
+ETAG: null
+TOOLS: read
+APPROVAL: granted_by_human
+FAIL_CLASS: NONE
+
+GOAL: Capture the approval rationale for rollout.
+
+NOW:
+- Human approval rationale recorded.
+
+NEXT:
+- Continue rollout with evidence repair.
+
+RISKS:
+- Missing artifacts could still block audits.
+
+ACCEPT:
+- Rationale: Approved after review of snapshot readiness.
+
+ARTIFACTS:
+- manifest: state/artifacts/900623dc82b03c3661716e356ac09426a6abd505b2e069a933fe34e08e59245d/manifest.json
+- manifest: state/artifacts/missing-hash/manifest.json
+
+QUESTIONS:
+- none
+
+CONFIDENCE: 0.68

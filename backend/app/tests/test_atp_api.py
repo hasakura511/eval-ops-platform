@@ -65,6 +65,9 @@ def test_path_traversal_blocked(tmp_path, monkeypatch):
     with pytest.raises(HTTPException) as exc_info:
         atp_streams.get_packet_file(info.stream_id, "../index.json")
     assert exc_info.value.status_code == 400
+    with pytest.raises(HTTPException) as exc_info:
+        atp_streams.get_packet_file(info.stream_id, "%2e%2e%2findex.json")
+    assert exc_info.value.status_code == 400
 
     artifact_dir = tmp_path / "state" / "artifacts" / "abc123"
     artifact_dir.mkdir(parents=True)
@@ -72,4 +75,7 @@ def test_path_traversal_blocked(tmp_path, monkeypatch):
 
     with pytest.raises(HTTPException) as exc_info:
         atp_streams.get_artifact_file("abc123", "../manifest.json")
+    assert exc_info.value.status_code == 400
+    with pytest.raises(HTTPException) as exc_info:
+        atp_streams.get_artifact_file("abc123", "%2e%2e%2fmanifest.json")
     assert exc_info.value.status_code == 400

@@ -1,3 +1,6 @@
 {"ts":"2024-02-01T10:00:05Z","id":"sample/000001","type":"PLAN_CREATED","summary":"Plan packet created","packet_id":"sample/000001"}
 {"ts":"2024-02-01T10:10:05Z","id":"sample/000002","type":"EXEC_REQUESTED","summary":"Execution requested","packet_id":"sample/000002"}
 {"ts":"2024-02-01T10:20:05Z","id":"sample/000003","type":"APPROVAL_GRANTED","summary":"Human approval granted","packet_id":"sample/000003"}
+{"ts":"2024-02-01T10:25:05Z","id":"sample/000004","type":"REVIEW_ADDED","summary":"Approval rationale recorded","packet_id":"sample/000004"}
+{"ts":"2024-02-01T10:26:05Z","id":"sample/000005","type":"REVIEW_ADDED","summary":"Forked review recorded","packet_id":"sample/000005"}
+{"ts":"2024-02-01T10:26:05Z","id":"sample/000005","type":"SNAPSHOT_BUILT","summary":"Snapshot built for sample","packet_id":"sample/000005","snapshot_hash":"sample-hash"}

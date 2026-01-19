@@ -61,3 +61,8 @@ def test_snapshot_builder_deterministic(tmp_path):
     build_snapshot.write_snapshot(root, output_path)
     written = json.loads(output_path.read_text())
     assert written == first
+
+    events = (stream_dir / "events.jsonl").read_text().splitlines()
+    last_event = json.loads(events[-1])
+    assert last_event["type"] == "SNAPSHOT_BUILT"
+    assert "snapshot_hash" in last_event

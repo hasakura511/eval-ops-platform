@@ -1,6 +1,6 @@
 {
   "schema_version": "control-room-snapshot-v0",
-  "as_of": "2024-02-01T10:20:05Z",
+  "as_of": "2024-02-01T10:26:05Z",
   "health": {
     "status": "Warning",
     "data_freshness_seconds": 0,
@@ -9,16 +9,23 @@
   "streams": [
     {
       "id": "sample",
-      "latest_seq": 3,
-      "last_event_ts": "2024-02-01T10:20:05Z",
+      "latest_seq": 5,
+      "last_event_ts": "2024-02-01T10:26:05Z",
       "status": "blocked",
       "approval_state": "granted_by_human",
-      "latest_packet_id": "sample/000003",
+      "latest_packet_id": "sample/000005",
       "fail_class": "NONE",
       "packet_files": [
         "000001.request.atp",
         "000002.response.atp",
-        "000003.review.atp"
+        "000003.review.atp",
+        "000004.review.atp",
+        "000005.review.atp"
+      ],
+      "has_fork": true,
+      "fork_children": [
+        "sample/000004",
+        "sample/000005"
       ]
     }
   ],

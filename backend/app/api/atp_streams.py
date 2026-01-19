@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import sys
+from urllib.parse import unquote
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException
@@ -24,7 +25,21 @@ def get_repo_root() -> Path:
     return REPO_ROOT
 
 
+def contains_traversal(value: str) -> bool:
+    for raw in (value, unquote(value)):
+        normalized = raw.replace("\\", "/")
+        if normalized.startswith("/"):
+            return True
+        segments = [segment for segment in normalized.split("/") if segment]
+        if any(segment == ".." for segment in segments):
+            return True
+    return False
+
+
 def safe_resolve(base: Path, *parts: str) -> Path:
+    for part in parts:
+        if contains_traversal(part):
+            raise HTTPException(status_code=400, detail="Invalid path")
     candidate = (base.joinpath(*parts)).resolve()
     if base == candidate:
         return candidate

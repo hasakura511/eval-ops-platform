@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import argparse
+import hashlib
 import json
 from datetime import datetime, timezone
 from pathlib import Path
@@ -55,14 +56,26 @@ def build_snapshot(root: Path) -> dict:
         packet_files = index["streams"][stream_id].get("packet_files", [])
         if not packet_files:
             continue
-        latest_packet_path = stream_path / packet_files[-1]
-        packet = atp.parse_packet_file(latest_packet_path)
+        parsed_packets = []
+        for filename in packet_files:
+            packet_path = stream_path / filename
+            parsed_packets.append(atp.parse_packet_file(packet_path))
+        parent_map: dict[str, list[str]] = {}
+        for parsed in parsed_packets:
+            parent = parsed.get("PARENT")
+            if not parent:
+                continue
+            parent_map.setdefault(parent, []).append(parsed["ID"])
+
+        packet = parsed_packets[-1]
         status = derive_status(packet, root)
         event_ts = latest_event_timestamp(stream_path / "events.jsonl")
         packet_ts = parse_timestamp(packet.get("TS"))
         newest = max([ts for ts in [event_ts, packet_ts] if ts], default=None)
         if newest and (latest_timestamp is None or newest > latest_timestamp):
             latest_timestamp = newest
+        fork_children = parent_map.get(packet.get("PARENT") or "", [])
+        has_fork = len(fork_children) > 1
 
         streams_summary.append(
             {
@@ -74,10 +87,12 @@ def build_snapshot(root: Path) -> dict:
                 "latest_packet_id": packet.get("ID"),
                 "fail_class": packet.get("FAIL_CLASS"),
                 "packet_files": packet_files,
+                "has_fork": has_fork,
+                "fork_children": fork_children,
             }
         )
 
-    as_of = latest_timestamp or datetime.now(timezone.utc)
+    as_of = latest_timestamp or datetime(1970, 1, 1, tzinfo=timezone.utc)
     blocked_count = sum(1 for stream in streams_summary if stream["status"] == "blocked")
     health_status = "Warning" if blocked_count else "Nominal"
 
@@ -95,9 +110,32 @@ def build_snapshot(root: Path) -> dict:
     }
 
 
+def snapshot_hash(snapshot: dict) -> str:
+    payload = json.dumps(snapshot, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    return hashlib.sha256(payload).hexdigest()
+
+
+def append_snapshot_events(root: Path, snapshot: dict, digest: str) -> None:
+    ts = snapshot.get("as_of")
+    for stream in snapshot.get("streams", []):
+        stream_id = stream["id"]
+        summary = f"Snapshot built for {stream_id}"
+        atp.append_event(
+            stream_id,
+            "SNAPSHOT_BUILT",
+            summary,
+            {"snapshot_hash": digest},
+            root,
+            packet_id=stream.get("latest_packet_id"),
+            ts_override=ts,
+        )
+
+
 def write_snapshot(root: Path, output_path: Path) -> dict:
     snapshot = build_snapshot(root)
+    digest = snapshot_hash(snapshot)
     output_path.write_text(json.dumps(snapshot, indent=2) + "\n")
+    append_snapshot_events(root, snapshot, digest)
     return snapshot
 
 

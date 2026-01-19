@@ -603,6 +603,66 @@ body.show-json-keys .json-key {
   margin-top: var(--space-4);
 }
 
+.stream-detail-meta {
+  display: grid;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+}
+
+.approval-summary,
+.fork-summary {
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.fork-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  background: rgba(217, 130, 43, 0.2);
+  color: var(--warn);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.fork-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.fork-link {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.2rem 0.55rem;
+  background: rgba(255, 255, 255, 0.02);
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+
+.approval-title {
+  font-weight: 600;
+  margin-bottom: var(--space-2);
+}
+
+.approval-status {
+  color: var(--muted);
+  font-size: 0.9rem;
+  margin-bottom: var(--space-2);
+}
+
+.approval-details summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
 .stream-packets,
 .stream-timeline {
   display: grid;

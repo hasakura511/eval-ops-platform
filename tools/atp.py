@@ -461,12 +461,13 @@ def append_event(
     extra: dict[str, str],
     root: Path,
     packet_id: Optional[str] = None,
+    ts_override: Optional[str] = None,
 ) -> Path:
     ensure_layout(root)
     stream_path = streams_dir(root) / stream_id
     seq = latest_sequence_for_stream(stream_path)
     event_path = stream_path / "events.jsonl"
-    ts = datetime.now(timezone.utc).astimezone().isoformat(timespec="seconds")
+    ts = ts_override or datetime.now(timezone.utc).astimezone().isoformat(timespec="seconds")
     payload = {
         "ts": ts,
         "id": f"{stream_id}/{seq:06d}",

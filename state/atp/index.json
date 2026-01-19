@@ -2,11 +2,13 @@
   "atp_version": "0.1",
   "streams": {
     "sample": {
-      "latest_seq": 3,
+      "latest_seq": 5,
       "packet_files": [
         "000001.request.atp",
         "000002.response.atp",
-        "000003.review.atp"
+        "000003.review.atp",
+        "000004.review.atp",
+        "000005.review.atp"
       ]
     }
   }

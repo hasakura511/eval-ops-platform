@@ -96,6 +96,8 @@ python tools/build_snapshot.py --output state/control_room_latest.json
 
 The snapshot includes a `streams[]` array with the latest packet, status, and approval state for each stream.
 
+Snapshot builds append a `SNAPSHOT_BUILT` event to each stream’s `events.jsonl` with a stable `snapshot_hash`.
+
 ## Approval behavior
 
 - EXEC packets default to `APPROVAL: requested`.
