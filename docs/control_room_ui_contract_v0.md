@@ -6,6 +6,7 @@
 
 - **Primary:** `state/control_room_latest.json` (static snapshot for dashboard pages).
 - **Optional:** Query string override via `?source=../state/control_room_latest.json` or other snapshot paths under `/state`.
+- **Static mode note:** `dashboard/state` is a symlink to `../state` so `python -m http.server` can serve `/state/*` fixtures from the dashboard directory.
 - **Note:** Phase 0 is snapshot-driven. Phase 1 may swap sources to API/DB, but should preserve this shape (additive only).
 
 ## Live update modes (Phase 0)
