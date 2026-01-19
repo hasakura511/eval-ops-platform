@@ -1,0 +1,73 @@
+ATP/0.1
+ID: stream-000001/000003
+TS: 2026-01-19T13:30:00+09:00
+MODE: EXEC
+TASK: scaffold-atp
+STATE: git=89abcde dirty=1
+PARENT: <parent_etag>
+ETAG: <fill_after>
+TOOLS: edit|exec
+APPROVAL: granted_by_human
+
+GOAL: Apply ATP scaffolding, schema, and tooling changes.
+
+NOW:
+- Tests executed and failed.
+
+NEXT:
+- Fix failing test and re-run.
+
+RISKS:
+- Failure blocks release.
+
+ACCEPT:
+- Tests pass after fix.
+
+ARTIFACTS:
+- diff: state/artifacts/<hash>/diff.patch
+- logs: state/artifacts/<hash>/logs.txt
+
+QUESTIONS:
+- none
+
+STATUS: FAILED
+FAIL_CLASS: TEST
+FAIL_SYMPTOM: pytest failing: test_atp::test_etag_stability AssertionError
+
+---
+JSON:
+{
+  "ATP": "ATP/0.1",
+  "ID": "stream-000001/000003",
+  "TS": "2026-01-19T13:30:00+09:00",
+  "MODE": "EXEC",
+  "TASK": "scaffold-atp",
+  "STATE": "git=89abcde dirty=1",
+  "PARENT": "<parent_etag>",
+  "ETAG": "<fill_after>",
+  "TOOLS": "edit|exec",
+  "APPROVAL": "granted_by_human",
+  "goal": "Apply ATP scaffolding, schema, and tooling changes.",
+  "now": [
+    "Tests executed and failed."
+  ],
+  "next": [
+    "Fix failing test and re-run."
+  ],
+  "risks": [
+    "Failure blocks release."
+  ],
+  "accept": [
+    "Tests pass after fix."
+  ],
+  "artifacts": {
+    "diff": "state/artifacts/<hash>/diff.patch",
+    "logs": "state/artifacts/<hash>/logs.txt"
+  },
+  "questions": [
+    "none"
+  ],
+  "status": "FAILED",
+  "fail_class": "TEST",
+  "fail_symptom": "pytest failing: test_atp::test_etag_stability AssertionError"
+}

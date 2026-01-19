@@ -1,0 +1,81 @@
+ATP/0.1
+ID: stream-000001/000001
+TS: 2026-01-19T12:34:56+09:00
+MODE: PLAN
+TASK: scaffold-atp
+STATE: git=0123456 dirty=0
+PARENT: none
+ETAG: <fill_after>
+TOOLS: read|diff
+APPROVAL: none
+
+GOAL: Establish ATP ledger scaffolding, schema, and minimal tooling.
+
+NOW:
+- ATP scaffolding missing in repo.
+- No packet schema defined.
+- Tooling for events/artifacts not implemented.
+
+NEXT:
+- Add state/atp and state/artifacts scaffolding.
+- Define JSON schemas and example packets.
+- Implement minimal tooling for packets, events, artifacts.
+
+RISKS:
+- Schema may drift from textual packet format.
+
+ACCEPT:
+- Directories and README files exist.
+- Schema + examples are present.
+
+ARTIFACTS:
+- manifest: state/artifacts/<hash>/manifest.json
+
+QUESTIONS:
+- none
+
+STATUS: NEEDS_INFO
+FAIL_CLASS: NONE
+FAIL_SYMPTOM: none
+
+---
+JSON:
+{
+  "ATP": "ATP/0.1",
+  "ID": "stream-000001/000001",
+  "TS": "2026-01-19T12:34:56+09:00",
+  "MODE": "PLAN",
+  "TASK": "scaffold-atp",
+  "STATE": "git=0123456 dirty=0",
+  "PARENT": "none",
+  "ETAG": "<fill_after>",
+  "TOOLS": "read|diff",
+  "APPROVAL": "none",
+  "goal": "Establish ATP ledger scaffolding, schema, and minimal tooling.",
+  "now": [
+    "ATP scaffolding missing in repo.",
+    "No packet schema defined.",
+    "Tooling for events/artifacts not implemented."
+  ],
+  "next": [
+    "Add state/atp and state/artifacts scaffolding.",
+    "Define JSON schemas and example packets.",
+    "Implement minimal tooling for packets, events, artifacts."
+  ],
+  "risks": [
+    "Schema may drift from textual packet format."
+  ],
+  "accept": [
+    "Directories and README files exist.",
+    "Schema + examples are present."
+  ],
+  "artifacts": {
+    "manifest": "state/artifacts/<hash>/manifest.json"
+  },
+  "questions": [
+    "none"
+  ],
+  "status": "NEEDS_INFO",
+  "fail_class": "NONE",
+  "fail_symptom": "none"
+}

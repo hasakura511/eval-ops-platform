@@ -1,0 +1,77 @@
+ATP/0.1
+ID: stream-000001/000001
+TS: 2026-01-19T13:00:00+09:00
+MODE: PLAN
+TASK: scaffold-atp
+STATE: git=0123456 dirty=0
+PARENT: <parent_etag>
+ETAG: <fill_after>
+TOOLS: read|diff
+APPROVAL: none
+
+GOAL: Outline plan to add ATP scaffolding, schema, and tooling.
+
+NOW:
+- Requirements captured for three tasks.
+- No code changes applied yet.
+
+NEXT:
+- Create state/atp and state/artifacts scaffolding.
+- Add schema + example packets.
+- Implement tooling + tests.
+
+RISKS:
+- Tooling may diverge from schema expectations.
+
+ACCEPT:
+- Tooling passes minimal unit tests.
+
+ARTIFACTS:
+- manifest: state/artifacts/<hash>/manifest.json
+
+QUESTIONS:
+- none
+
+STATUS: OK
+FAIL_CLASS: NONE
+FAIL_SYMPTOM: none
+
+---
+JSON:
+{
+  "ATP": "ATP/0.1",
+  "ID": "stream-000001/000001",
+  "TS": "2026-01-19T13:00:00+09:00",
+  "MODE": "PLAN",
+  "TASK": "scaffold-atp",
+  "STATE": "git=0123456 dirty=0",
+  "PARENT": "<parent_etag>",
+  "ETAG": "<fill_after>",
+  "TOOLS": "read|diff",
+  "APPROVAL": "none",
+  "goal": "Outline plan to add ATP scaffolding, schema, and tooling.",
+  "now": [
+    "Requirements captured for three tasks.",
+    "No code changes applied yet."
+  ],
+  "next": [
+    "Create state/atp and state/artifacts scaffolding.",
+    "Add schema + example packets.",
+    "Implement tooling + tests."
+  ],
+  "risks": [
+    "Tooling may diverge from schema expectations."
+  ],
+  "accept": [
+    "Tooling passes minimal unit tests."
+  ],
+  "artifacts": {
+    "manifest": "state/artifacts/<hash>/manifest.json"
+  },
+  "questions": [
+    "none"
+  ],
+  "status": "OK",
+  "fail_class": "NONE",
+  "fail_symptom": "none"
+}
