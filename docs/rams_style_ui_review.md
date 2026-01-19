@@ -41,10 +41,18 @@
   - **Fix:** Added a right-side drawer with keyboard focus trapping and ESC-to-close behavior.
 - **Issue:** Filter state was not shareable via URL.
   - **Fix:** Sync filters to query parameters and apply on load.
+- **Issue:** Drawer focus moved to the scrim instead of the Close button.
+  - **Fix:** Target the drawer Close button explicitly so focus enters the panel on open.
+
+### Hierarchy Scaling Strategy
+
+- The hierarchy panel renders a scrollable tree and keeps the detail view pinned for inspection.
+- Strategy: collapse-by-default for deep project groups and add “+N more” caps for very long sibling lists.
+- Implementation deferred; this section documents the intended behavior for large node counts.
 
 ## Remaining Risks / TODO
 
-- **Keyboard focus order:** Should be re-validated with a real keyboard walk-through after adding more actions.
+- **Keyboard focus order:** Re-validate if new actions or focusable controls are added.
 - **ARIA labels:** If additional controls are added, verify that labels and roles remain consistent and unambiguous.
 - **Contrast checks:** Dark mode uses tokens, but high-contrast verification should be done with a contrast checker.
 
@@ -53,17 +61,18 @@
 - [x] Paths verified (workboard/hierarchy loading via `python -m http.server`).
 - [x] SSE updates apply when `state/control_room_latest.json` changes (LIVE mode).
 - [x] Polling fallback kicks in when SSE disconnects (POLLING mode).
-- [ ] Drawer keyboard behavior verified (focus trap + ESC close).
-- [ ] Staleness threshold verified (`STALE_THRESHOLD_SECONDS`).
+- [x] Drawer keyboard behavior verified (focus trap + ESC close).
+- [x] Staleness threshold verified (`STALE_THRESHOLD_SECONDS`).
 - [x] Empty/loading/error states verified (no runs, no alerts, fetch fail).
-- [ ] Hierarchy scaling strategy stated (nested groups + scroll).
+- [x] Hierarchy scaling strategy stated (nested groups + scroll).
 
 ## Verification Evidence
 
-- Snapshot endpoint: `curl -i http://127.0.0.1:8000/api/v1/control-room/snapshot` → HTTP 200 with JSON payload.
-- SSE stream: `content-type: text/event-stream`, `cache-control: no-cache`, heartbeat `event: ping` observed at ~15s.
-- Change trigger: updating `state/control_room_latest.json` emitted a new `event: snapshot` with updated `as_of`.
-- Static polling: Playwright opened workboard + hierarchy under `python -m http.server` and reported `POLLING`.
+- Snapshot endpoint: `curl -i http://127.0.0.1:9000/api/v1/control-room/snapshot` → HTTP 200 with JSON payload.
+- SSE stream: `curl -N http://127.0.0.1:9000/api/v1/control-room/stream` returned `event: snapshot` and updated after editing `state/control_room_latest.json` (`as_of` set to `2026-01-19T02:38:19.991899Z`).
+- Drawer keyboard: Tab to “Open,” Enter opens drawer, focus lands on Close button, Escape closes drawer, focus returns to `open-run-run-bilingual-021`.
+- Staleness check: `state/control_room_latest.json` set to `as_of=2026-01-19T00:37:31.615192Z` + `data_freshness_seconds=7200` showed **STALE**; reset to `as_of=2026-01-19T02:37:42.043408Z` + `data_freshness_seconds=5` showed **FRESH** (`STALE_THRESHOLD_SECONDS=30`).
+- Static polling: Playwright opened workboard + hierarchy under `python -m http.server` and reported `POLLING` in the snapshot status pill.
 - Fetch failure: renaming `state/control_room_latest.json` + `state/latest.json` showed `OFFLINE` + error placeholders; console error count stayed flat across 18s; restoring files returned to `POLLING`.
 - Empty states: `?source=state/samples/control_room_empty.json` showed "No runs match current filters.", "No hierarchy data available.", and "No alerts."
 - Screenshots: `docs/screenshots/control-room-workboard.png`, `docs/screenshots/control-room-hierarchy.png`.

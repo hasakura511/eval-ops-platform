@@ -1444,7 +1444,7 @@ const openDrawer = (payload) => {
   const drawer = byId("run-drawer");
   if (!drawer) return;
   const panel = drawer.querySelector(".drawer-panel");
-  const closeButton = drawer.querySelector("[data-drawer-close]");
+  const closeButton = drawer.querySelector("button[data-drawer-close]");
   const lastFocused = document.activeElement;
 
   selectedRunId = payload?.run?.run_id || null;
