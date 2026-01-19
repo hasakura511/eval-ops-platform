@@ -13,6 +13,7 @@ LABELS = [
     "Acceptable",
     "Unacceptable: Other",
     "Unacceptable: Spelling",
+    "Unacceptable: Extra Language",
     "Unacceptable: Concerns",
     "Problem: Other",
 ]
@@ -34,6 +35,114 @@ def detect_mode(query: str) -> str:
 def _strip_diacritics(value: str) -> str:
     normalized = unicodedata.normalize("NFKD", value)
     return "".join(ch for ch in normalized if not unicodedata.combining(ch))
+
+
+# Japan-specific writing system detection (JP01-JP06)
+def _detect_writing_system(text: str) -> dict:
+    """
+    Detect Japanese writing systems present in text.
+
+    Returns dict with counts of:
+    - hiragana: ぁ-ん characters
+    - katakana: ァ-ン characters
+    - kanji: CJK unified ideographs
+    - ascii: Latin/ASCII characters
+    - numbers_arabic: 0-9
+    - numbers_kanji: 一二三四五六七八九十百千万
+    """
+    if not text:
+        return {"hiragana": 0, "katakana": 0, "kanji": 0, "ascii": 0,
+                "numbers_arabic": 0, "numbers_kanji": 0}
+
+    hiragana = len(re.findall(r'[\u3040-\u309F]', text))
+    katakana = len(re.findall(r'[\u30A0-\u30FF]', text))
+    # CJK Unified Ideographs (common kanji range)
+    kanji = len(re.findall(r'[\u4E00-\u9FFF]', text))
+    ascii_chars = len(re.findall(r'[A-Za-z]', text))
+    numbers_arabic = len(re.findall(r'[0-9]', text))
+    numbers_kanji = len(re.findall(r'[一二三四五六七八九十百千万億]', text))
+
+    return {
+        "hiragana": hiragana,
+        "katakana": katakana,
+        "kanji": kanji,
+        "ascii": ascii_chars,
+        "numbers_arabic": numbers_arabic,
+        "numbers_kanji": numbers_kanji,
+    }
+
+
+def _is_japanese_content(text: str) -> bool:
+    """Check if text contains Japanese writing systems."""
+    if not text:
+        return False
+    ws = _detect_writing_system(text)
+    return (ws["hiragana"] + ws["katakana"] + ws["kanji"]) > 0
+
+
+def _detect_jp_writing_mismatch(result: str, official: Optional[str]) -> Tuple[bool, str]:
+    """
+    JP04/JP05: Detect if result uses wrong writing system compared to official title.
+
+    Returns: (has_mismatch, mismatch_type)
+    - has_mismatch: True if writing system doesn't match official
+    - mismatch_type: Description of the mismatch (e.g., "hiragana instead of kanji")
+    """
+    if not result or not official:
+        return (False, "")
+
+    # Only apply to content with Japanese characters
+    if not _is_japanese_content(official):
+        return (False, "")
+
+    result_ws = _detect_writing_system(result)
+    official_ws = _detect_writing_system(official)
+
+    # Check for writing system substitutions
+    # JP05: Wrong writing system → Acceptable
+    mismatches = []
+
+    # Kanji in official but hiragana/katakana in result
+    if official_ws["kanji"] > 0 and result_ws["kanji"] == 0:
+        if result_ws["hiragana"] > 0 or result_ws["katakana"] > 0:
+            mismatches.append("kana instead of kanji")
+
+    # Hiragana in official but katakana in result (or vice versa)
+    if official_ws["hiragana"] > 0 and result_ws["hiragana"] == 0 and result_ws["katakana"] > 0:
+        mismatches.append("katakana instead of hiragana")
+    if official_ws["katakana"] > 0 and result_ws["katakana"] == 0 and result_ws["hiragana"] > 0:
+        mismatches.append("hiragana instead of katakana")
+
+    # JP03: Japanese content in English but Katakana demoted
+    # If official is English (ASCII) but result is Katakana
+    if official_ws["ascii"] > 0 and official_ws["katakana"] == 0:
+        if result_ws["katakana"] > 0 and result_ws["ascii"] == 0:
+            mismatches.append("katakana instead of english")
+
+    if mismatches:
+        return (True, "; ".join(mismatches))
+    return (False, "")
+
+
+def _detect_jp_number_format_mismatch(result: str, official: Optional[str]) -> bool:
+    """
+    JP06: Detect number format mismatch (Arabic vs Kanji numbers).
+
+    Returns True if result uses alternative number format (should be Good, not Perfect).
+    """
+    if not result or not official:
+        return False
+
+    result_ws = _detect_writing_system(result)
+    official_ws = _detect_writing_system(official)
+
+    # If official has Arabic numbers but result has Kanji numbers (or vice versa)
+    if official_ws["numbers_arabic"] > 0 and result_ws["numbers_kanji"] > 0:
+        return True
+    if official_ws["numbers_kanji"] > 0 and result_ws["numbers_arabic"] > 0:
+        return True
+
+    return False
 
 
 def _normalize_basic(value: str) -> str:
@@ -307,7 +416,14 @@ def _compute_dominance_ratio(popularity: float, alt_best: float) -> float:
     return popularity / denom
 
 
-def _detect_sequel_penalty(result: str, query: str) -> bool:
+def _detect_sequel_penalty(result: str, query: str, official_title: Optional[str] = None) -> bool:
+    """
+    Detect if a sequel result should be penalized.
+
+    CT02: Consider franchise context - don't penalize if query matches franchise name.
+    E.g., "ave" matching "Avengers: Endgame" should NOT be penalized because
+    the user is searching for the Avengers franchise.
+    """
     if not result:
         return False
     sequel_markers = [
@@ -325,7 +441,32 @@ def _detect_sequel_penalty(result: str, query: str) -> bool:
         return False
     if not query:
         return True
-    return not any(re.search(marker, query, re.IGNORECASE) for marker in sequel_markers)
+    # If query explicitly includes sequel marker, no penalty
+    if any(re.search(marker, query, re.IGNORECASE) for marker in sequel_markers):
+        return False
+
+    # CT02: Check if query matches the franchise name (prefix of result/title)
+    # E.g., "ave" matches "Avengers" in "Avengers: Endgame"
+    query_norm = _normalize_punct(query)
+    result_norm = _normalize_punct(result)
+
+    # Check if query is a prefix of the result (franchise match)
+    if result_norm.startswith(query_norm):
+        return False  # Query matches franchise, no penalty
+
+    # Check against official title too
+    if official_title:
+        official_norm = _normalize_punct(official_title)
+        if official_norm.startswith(query_norm):
+            return False  # Query matches franchise, no penalty
+
+        # Also check first word of title (franchise name often first)
+        title_words = [_normalize_punct(w) for w in re.findall(r"[A-Za-z0-9']+", official_title)]
+        if title_words and title_words[0].startswith(query_norm):
+            return False  # Query matches franchise first word
+
+    # Penalty applies only if query doesn't relate to franchise
+    return True
 
 
 def _detect_category_not_title(official_title: Optional[str]) -> bool:
@@ -352,18 +493,58 @@ def _weak_prefix_word_match(query: str, official_title: Optional[str], max_len: 
     return False
 
 
+def _is_complex_hint(text: str) -> bool:
+    """
+    Detect if a hint is complex (multi-aspect) which should cap at Good.
+
+    Complex hints have multiple qualifying conditions, such as:
+    - "action movies with superheroes"
+    - "romantic comedies from the 90s"
+    - "movies that are both funny and scary"
+    """
+    if not text:
+        return False
+    lower = text.strip().casefold()
+
+    # Multiple modifier indicators
+    complexity_patterns = [
+        r"\b(with|featuring|about|starring)\b.*\b(and|or|that)\b",  # chained conditions
+        r"\bthat\s+are\b.*\band\b",  # "that are X and Y"
+        r"\b(both|also|as well as)\b",  # explicit multi-aspect
+        r"\b(from\s+the|in\s+the)\b.*\b(with|featuring|about)\b",  # era + condition
+        r"(movies?|films?|shows?)\s+that\s+\w+\s+and\s+\w+",  # "movies that X and Y"
+    ]
+
+    for pattern in complexity_patterns:
+        if re.search(pattern, lower):
+            return True
+
+    # Word count heuristic: very long hints are usually complex
+    word_count = len(re.findall(r"\w+", lower))
+    if word_count >= 8:
+        return True
+
+    return False
+
+
 def _detect_category_result(result: str, query: str) -> bool:
     """
     Detect if result is a category/genre description rather than a specific title.
 
     Category results are valid completions like "disney+ animation" for query "ani"
     that describe a genre/category rather than pointing to a specific title.
+
+    Note: Question format (ending with "?") is NOT a valid category - it's Extra Language.
     """
     if not result:
         return False
 
     result_lower = result.strip().casefold()
     query_lower = (query or "").strip().casefold()
+
+    # Question format is NOT a valid category - it's verbose/Extra Language
+    if result_lower.endswith("?"):
+        return False
 
     # Check if result contains category indicators
     category_indicators = [
@@ -430,7 +611,7 @@ def _score_features(features: Features, config: dict, mode: str = "prefix") -> T
     score = (match_weight * match_strength) + (popularity_weight * popularity) + (dominance_weight * dominance_ratio)
 
     sequel_penalty = 0.0
-    if _detect_sequel_penalty(features.result, features.query):
+    if _detect_sequel_penalty(features.result, features.query, features.official_title):
         sequel_penalty = float(config.get("sequel_penalty", 0.0))
         score = max(0.0, score - sequel_penalty)
 
@@ -490,20 +671,20 @@ def score_features(features: Features, config: dict) -> ScoreOutput:
         )
 
     # Detect non-title format BEFORE validation gate
-    # This allows proper "Unacceptable: Spelling" for conversational/question results
-    # But category results (genre/type descriptions) are valid, not spelling errors
+    # This triggers "Unacceptable: Extra Language" for conversational/question results
+    # But category results (genre/type descriptions) are valid, not extra language
     is_category_result = _detect_category_result(features.result, features.query)
     non_title_format = _is_non_title_format(features.result) and not is_category_result
     if non_title_format:
         reason = "non-title format (conversational or question)"
-        comment = _comment_for_rating(mode, "Unacceptable: Spelling", 0.0, reason)
+        comment = _comment_for_rating(mode, "Unacceptable: Extra Language", 0.0, reason)
         return ScoreOutput(
             task_id=features.task_id,
-            rating="Unacceptable: Spelling",
+            rating="Unacceptable: Extra Language",
             comment=comment,
             debug={
                 "mode": mode,
-                "gates": {"concerns": False, "validation": False, "spelling": True, "non_title_format": True},
+                "gates": {"concerns": False, "validation": False, "spelling": False, "extra_language": True},
                 "features": features.model_dump(),
                 "score": 0.0,
                 "thresholds": thresholds,
@@ -606,6 +787,7 @@ def score_features(features: Features, config: dict) -> ScoreOutput:
 
     # For prefix mode, use prefix_match_strength as primary signal
     content_type_computed = components.get("content_type_computed", features.content_type)
+    short_prefix_cap = False  # Will be set in prefix mode if query is too short
 
     if mode == "prefix":
         # Perfect: strong match (2) AND high match_strength, without major alternatives
@@ -693,22 +875,13 @@ def score_features(features: Features, config: dict) -> ScoreOutput:
                 rating = "Good"  # Strong match but lower popularity
 
         elif prefix_match == 1:
-            # Secondary word matches - check if user is skipping an article
+            # REL03: Secondary/middle-string matches → max Acceptable (not relevant)
+            # Example: "dark" matching "The Dark Knight" in middle → Acceptable
             if is_secondary_match:
-                # Users commonly skip articles (a, an, the) when searching
-                # If first word is an article, this is a valid secondary intent → Good
-                # Otherwise it's poorly related → Acceptable
-                first_word = ""
-                if features.official_title:
-                    title_words = features.official_title.lower().split()
-                    if title_words:
-                        first_word = title_words[0]
-                articles = {"a", "an", "the"}
-                if first_word in articles:
-                    rating = "Good"  # Valid secondary intent (article-skipping)
-                else:
-                    rating = "Acceptable"  # Poorly related
+                # Middle-string matches are poorly related, max Acceptable
+                rating = "Acceptable"
             elif components["popularity"] >= 0.7:
+                # Related match (not secondary) with high popularity
                 rating = "Good"
             else:
                 rating = "Acceptable"
@@ -722,6 +895,15 @@ def score_features(features: Features, config: dict) -> ScoreOutput:
         if components["popularity"] < 0.2 and rating in ("Perfect", "Good"):
             if not is_category and content_type_computed != "person":
                 rating = "Acceptable"
+
+        # R04, POP02, POP03: Prefix-length weighting
+        # Short prefixes have many possible intents → cap at Good
+        # Long prefixes have fewer intents → can achieve Perfect more easily
+        query_len = len(features.query.strip()) if features.query else 0
+        short_prefix_threshold = config.get("short_prefix_max_len", 2)
+        short_prefix_cap = query_len <= short_prefix_threshold and rating == "Perfect"
+        if short_prefix_cap:
+            rating = "Good"  # Too many possible intents for short prefix
 
         # Alternative-based downgrade for non-person, non-category results
         if not is_category and content_type_computed != "person":
@@ -759,6 +941,22 @@ def score_features(features: Features, config: dict) -> ScoreOutput:
                 elif rating in ("Perfect", "Good") and components["dominance_ratio"] < dom_good:
                     rating = "Acceptable"
 
+    # JP01-JP06: Japan-specific writing system rules
+    jp_writing_mismatch, jp_mismatch_type = _detect_jp_writing_mismatch(
+        features.result, features.official_title
+    )
+    jp_number_mismatch = _detect_jp_number_format_mismatch(
+        features.result, features.official_title
+    )
+
+    # JP05: Wrong writing system → max Acceptable
+    if jp_writing_mismatch and rating in ("Perfect", "Good"):
+        rating = "Acceptable"
+
+    # JP06: Alternative number format → max Good (not Perfect)
+    if jp_number_mismatch and rating == "Perfect":
+        rating = "Good"
+
     niche_popularity = float(config.get("niche_popularity", 0.2))
     irrelevant_match = float(config.get("irrelevant_match_max", 0.6))
     category_not_title = _detect_category_not_title(features.official_title)
@@ -788,7 +986,16 @@ def score_features(features: Features, config: dict) -> ScoreOutput:
                 rating = "Acceptable"
                 unpopular_upgrade = True
 
+    # Complex hint cap: multi-aspect hints max at Good, never Perfect (CH01, CH02)
+    is_complex = _is_complex_hint(features.result)
+    if is_complex and rating == "Perfect":
+        rating = "Good"
+
     reason_order = [
+        ("JP writing system mismatch", jp_writing_mismatch),
+        ("JP number format", jp_number_mismatch),
+        ("short prefix", short_prefix_cap),
+        ("complex hint", is_complex),
         ("incomplete", incomplete_title),
         ("alternative exists", alternative_exists),
         ("niche", niche),
@@ -832,6 +1039,11 @@ def score_features(features: Features, config: dict) -> ScoreOutput:
                 "weak_prefix_word_match": weak_prefix_match,
                 "weak_prefix_upgrade": weak_prefix_upgrade,
                 "unpopular_upgrade": unpopular_upgrade,
+                "is_complex_hint": is_complex,
+                "short_prefix_cap": short_prefix_cap,
+                "jp_writing_mismatch": jp_writing_mismatch,
+                "jp_mismatch_type": jp_mismatch_type,
+                "jp_number_mismatch": jp_number_mismatch,
             },
             "score": score,
             "thresholds": thresholds,

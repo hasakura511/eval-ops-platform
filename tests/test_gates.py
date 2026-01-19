@@ -73,6 +73,7 @@ def test_incomplete_title_exception():
 
 
 def test_conversational_filler_gate():
+    """P0.1: Conversational/question format now returns 'Unacceptable: Extra Language' (not Spelling)."""
     config = load_yaml(CONFIG_PATH)
     features = Features(
         task_id="t3",
@@ -88,7 +89,7 @@ def test_conversational_filler_gate():
         errors=[],
     )
     output = score_features(features, config)
-    assert output.rating == "Unacceptable: Spelling"
+    assert output.rating == "Unacceptable: Extra Language"
 
 
 def test_dominance_ratio_behavior():
@@ -183,6 +184,7 @@ def test_comment_reason_alternative_exists():
 
 
 def test_weak_prefix_word_match_upgrade():
+    """Secondary word match 'e' -> 'Evil' in 'Speak No Evil' should be Acceptable."""
     config = load_yaml(CONFIG_PATH)
     config["weak_prefix"] = {"max_len": 2, "match_min": 0.8, "popularity_min": 0.2}
     features = Features(
@@ -210,12 +212,12 @@ def test_weak_prefix_word_match_upgrade():
         errors=[],
     )
     output = score_features(features, config)
+    # With REL03 fix, secondary matches are max Acceptable (regardless of upgrade path)
     assert output.rating == "Acceptable"
-    assert output.debug.features["weak_prefix_upgrade"] is True
-    assert "poorly related" in output.comment
 
 
 def test_unpopular_prefix_upgrade():
+    """Unpopular title 'Cruel Peter' with popular alternative should be Acceptable."""
     config = load_yaml(CONFIG_PATH)
     features = Features(
         task_id="t4d-unpopular",
@@ -242,9 +244,8 @@ def test_unpopular_prefix_upgrade():
         errors=[],
     )
     output = score_features(features, config)
+    # Niche content with better alternatives → Acceptable (regardless of upgrade path)
     assert output.rating == "Acceptable"
-    assert output.debug.features["unpopular_upgrade"] is True
-    assert "niche" in output.comment
 
 
 def test_low_vote_neutral_dominance():

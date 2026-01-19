@@ -1,0 +1,52 @@
+guideline_id,guideline_text,priority,code_location,code_rule_summary,status,fix_type,notes
+G01,Problem Other - task broken no output,gate-1,score.py:518-526,validation_failure check,match,,Code checks empty result
+G02,Unacceptable Concerns - offensive/sensitive content,gate-2,score.py:472-490,_detect_concerns() with keywords,partial,patch,Code uses keyword list only - missing nuanced content title exception logic
+G03,Unacceptable Spelling - spelling/punctuation/accent errors,gate-3,score.py:542-560,_detect_spelling_gate(),partial,patch,Code detects diacritics and punct but may miss some cases
+G04,Unacceptable Extra Language - overly verbose hints,gate-4,score.py:556-578,_is_non_title_format() → Extra Language,match,,P0.1: Relabeled from Spelling to Extra Language
+G05,Unacceptable Other - irrelevant/non-existent/non-video,gate-5,score.py:716-718,prefix_match==0 check,partial,patch,Code checks prefix match but not knowledge queries
+R01,Perfect - primary intent,rating-1,score.py:672-693,prefix mode Perfect logic,match,,
+R02,Perfect - high relevance,rating-2,score.py:672-693,prefix_match==2 AND match_strength>=0.95,match,,
+R03,Perfect - popular AND recent OR classic,rating-3,score.py:722-724,popularity threshold check,partial,patch,No explicit classic detection - uses popularity proxy
+R04,Perfect - makes sense for prefix length,rating-4,score.py:893-900,short_prefix_cap for query_len <= 2,match,,P1.1: Added prefix-length weighting
+R05,Multiple primary intents all Perfect,rating-5,score.py:672-693,Multiple can score Perfect,match,,Implicit in scoring
+R06,Good - secondary intent,rating-6,score.py:695-714,prefix_match==1 OR alternatives exist,match,,
+R07,Good - less popular,rating-7,score.py:727-729,alternative_exists check,match,,
+R08,Good - less recent not classic,rating-8,PARTIAL,,partial,patch,Recency not explicitly tracked
+R09,Good - slightly specific,rating-9,score.py:644-669,category detection,partial,patch,Some category logic exists
+R10,Acceptable - poorly related,rating-10,score.py:871-876,is_secondary_match → Acceptable,match,,P1.2: Fixed REL03 secondary-match
+R11,Acceptable - incomplete title,rating-11,score.py:732-741,incomplete_title handling,match,,
+R12,Acceptable - unpopular,rating-12,score.py:784-789,unpopular_upgrade,match,,
+R13,Acceptable - too vague,rating-13,MISSING,,gap,patch,No vagueness detection
+R14,Acceptable - too specific,rating-14,score.py:644-669,Partial in category logic,partial,patch,Some specificity handling
+CH01,Complex hints never Perfect,complex-1,score.py:356-388 + 865-867,_is_complex_hint() + cap logic,match,,P0.2: Added complex hint detection and cap
+CH02,Complex hints only Good/Acceptable/Unacceptable,complex-2,score.py:865-867,rating capped at Good,match,,P0.2: Complex hints max at Good
+CH03,Complex hints spark exploration,complex-3,MISSING,,gap,patch,No exploration scoring
+CT01,Classics ignore recency,content-1,PARTIAL,,partial,patch,Uses high IMDb votes as proxy - no explicit classic flag
+CT02,Sequels consider franchise popularity,content-2,score.py:311-364,_detect_sequel_penalty with franchise check,match,,P0.3: Fixed franchise-aware penalty
+CT03,New content - check advertising/trailer/box office,content-3,MISSING,,gap,,Cannot automate - human judgment
+CT04,Persons evaluated on relevance + film popularity,content-4,score.py:616-641,Person page handling,match,,
+CT05,Short prefix + famous person = Good not Perfect,content-5,score.py:893-900,short_prefix_cap applies to persons too,match,,P1.1: Prefix-length weighting
+CT06,Categories valid hint types,content-6,score.py:355-394,_detect_category_result(),match,,
+REL01,Prefix matches start of title,relevance-1,score.py:171-241,_compute_prefix_match_strength(),match,,
+REL02,Can match notable parts,relevance-2,score.py:199-211,Secondary word matching,partial,patch,Limited to non-first words
+REL03,Not relevant - middle string match,relevance-3,score.py:871-876,is_secondary_match → Acceptable max,match,,P1.2: Fixed - secondary matches now Acceptable
+REL04,Ignore 'the' at start,relevance-4,PARTIAL,,partial,patch,Some handling but not explicit
+REL05,Misspelled query - correct suggestion valid,relevance-5,MISSING,,gap,,Assumes query is correctly typed
+POP01,Evaluate vs other possible hints,popularity-1,score.py:283-300,alternatives comparison,match,,
+POP02,Short prefix higher bar,popularity-2,score.py:893-900,short_prefix_cap for query_len <= 2,match,,P1.1: Added prefix-length weighting
+POP03,Long prefix lower bar,popularity-3,score.py:893-900,Implicit - longer prefixes not capped,match,,P1.1: Added prefix-length weighting
+POP04,Classics exempt from recency,popularity-4,PARTIAL,,partial,patch,Uses popularity proxy
+POP05,Seasonal popularity boost,popularity-5,MISSING,,gap,,Cannot automate - time-based
+MKT01,Local market popularity,market-1,MISSING,,gap,,No locale handling
+MKT02,Wrong market title demote,market-2,MISSING,,gap,,No market title validation
+MKT03,English in non-English market OK,market-3,MISSING,,gap,,No locale handling
+CMT01,Comments always mandatory,comment-1,score.py:461-464,_comment_for_rating() generates,match,,Code generates comments
+CMT02,Explain rating choice,comment-2,score.py:461-464,Comment includes reason,match,,
+CMT03,Include correct spelling,comment-3,MISSING,,gap,patch,Spelling comment doesn't include correction
+LABEL,Rating scale has 8 labels,label-1,score.py:10-19,LABELS has 8,match,,P0.1: Added Extra Language label
+JP01,Use proper form from Apple TV JP storefront,japan-1,score.py:35-126,_detect_writing_system() family,partial,,P2: Basic writing system detection added
+JP02,Non-Japanese content: English original AND JP form both Perfect,japan-2,score.py:35-126,Implicit in writing system check,partial,,P2: Needs refinement for English-origin content
+JP03,Japanese content in English: Katakana demoted,japan-3,score.py:82-98,katakana instead of english detection,match,,P2: Added katakana-for-english detection
+JP04,Hiragana/Katakana/Kanji must match official form,japan-4,score.py:66-112,_detect_jp_writing_mismatch(),match,,P2: Added writing system mismatch detection
+JP05,Wrong writing system → Acceptable,japan-5,score.py:943-945,jp_writing_mismatch → Acceptable,match,,P2: Added writing system mismatch cap
+JP06,Numbers: original format Perfect alternative format Good,japan-6,score.py:114-126 + 948-950,_detect_jp_number_format_mismatch(),match,,P2: Added number format detection
