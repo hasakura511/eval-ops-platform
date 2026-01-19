@@ -1,0 +1,119 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/atp_packet.schema.json",
+  "title": "ATP Packet",
+  "type": "object",
+  "required": [
+    "ATP",
+    "ID",
+    "TS",
+    "MODE",
+    "TASK",
+    "STATE",
+    "PARENT",
+    "ETAG",
+    "TOOLS",
+    "APPROVAL",
+    "goal",
+    "now",
+    "next",
+    "risks",
+    "accept",
+    "artifacts",
+    "status",
+    "fail_class",
+    "fail_symptom"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "ATP": {
+      "type": "string",
+      "const": "ATP/0.1"
+    },
+    "ID": {
+      "type": "string",
+      "pattern": "^[^/]+/\\d{6}$"
+    },
+    "TS": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "MODE": {
+      "type": "string",
+      "enum": ["PLAN", "EXEC", "REVIEW"]
+    },
+    "TASK": {
+      "type": "string",
+      "minLength": 1
+    },
+    "STATE": {
+      "type": "string",
+      "minLength": 1
+    },
+    "PARENT": {
+      "type": "string",
+      "minLength": 1
+    },
+    "ETAG": {
+      "type": "string",
+      "minLength": 1
+    },
+    "TOOLS": {
+      "type": "string",
+      "minLength": 1
+    },
+    "APPROVAL": {
+      "type": "string",
+      "enum": ["none", "requested", "granted_by_human"]
+    },
+    "goal": {
+      "type": "string",
+      "minLength": 1
+    },
+    "now": {
+      "type": "array",
+      "items": {"type": "string"},
+      "maxItems": 3
+    },
+    "next": {
+      "type": "array",
+      "items": {"type": "string"},
+      "maxItems": 3
+    },
+    "risks": {
+      "type": "array",
+      "items": {"type": "string"},
+      "maxItems": 2
+    },
+    "accept": {
+      "type": "array",
+      "items": {"type": "string"},
+      "maxItems": 2
+    },
+    "artifacts": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "manifest": {"type": "string"},
+        "diff": {"type": "string"},
+        "logs": {"type": "string"},
+        "trace": {"type": "string"}
+      }
+    },
+    "questions": {
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "status": {
+      "type": "string",
+      "enum": ["OK", "NEEDS_INFO", "BLOCKED", "FAILED", "ROLLED_BACK"]
+    },
+    "fail_class": {
+      "type": "string",
+      "enum": ["NONE", "SPEC", "ENV", "TEST", "LOGIC", "INTEGRATION", "DATA", "TOOLING"]
+    },
+    "fail_symptom": {
+      "type": "string"
+    }
+  }
+}
