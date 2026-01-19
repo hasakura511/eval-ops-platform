@@ -1,5 +1,11 @@
 const DEFAULT_SNAPSHOT_PATH = "../state/control_room_latest.json";
+const LEGACY_SNAPSHOT_PATH = "../state/latest.json";
 const POLL_INTERVAL_MS = 8000;
+const STALE_THRESHOLD_SECONDS = 30;
+const REFRESH_LABEL_INTERVAL_MS = 1000;
+const STREAM_ENDPOINT = "/api/v1/control-room/stream";
+const SNAPSHOT_ENDPOINT = "/api/v1/control-room/snapshot";
+const FLASH_DURATION_MS = 1200;
 
 const statusClasses = {
   running: "status-running",
@@ -190,6 +196,7 @@ const explainers = {
     future: "Runner + alerting pipeline link alerts to runs.",
   },
 };
+
 const safeId = (value) =>
   String(value || "unknown").replace(/[^a-z0-9_-]/gi, "-").toLowerCase();
 
@@ -286,6 +293,137 @@ const fetchSnapshot = async (path) => {
   return response.json();
 };
 
+const normalizeTimestamp = (value) => {
+  if (!value) return null;
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
+};
+
+const computeFreshness = (asOf) =>
+  asOf ? Math.max(0, Math.floor((Date.now() - new Date(asOf).getTime()) / 1000)) : null;
+
+const normalizeSeverity = (value) =>
+  typeof value === "string" ? value.toLowerCase() : "info";
+
+const normalizeControlRoomSnapshot = (raw = {}) => {
+  const asOf = normalizeTimestamp(raw.as_of || raw.meta?.timestamp);
+  const health = raw.health || {};
+  const dataFreshness =
+    health.data_freshness_seconds ?? computeFreshness(asOf);
+
+  return {
+    schema_version: raw.schema_version || "control-room-snapshot-v0",
+    as_of: asOf,
+    health: {
+      status: health.status || raw.meta?.global_status || "Unknown",
+      data_freshness_seconds: dataFreshness,
+      active_alerts_count:
+        health.active_alerts_count ??
+        (Array.isArray(raw.alerts) ? raw.alerts.length : 0),
+    },
+    projects: toArray(raw.projects),
+    alerts: toArray(raw.alerts),
+  };
+};
+
+const mapLegacyStatus = (value) => {
+  const status = typeof value === "string" ? value.toUpperCase() : "UNKNOWN";
+  if (status.includes("CRITICAL") || status.includes("AUDIT_FAIL")) return "failed";
+  if (status.includes("DEREGULATION") || status.includes("HIGH_ENTROPY")) return "blocked";
+  if (status.includes("SANDBOX")) return "paused";
+  if (status.includes("NOMINAL")) return "running";
+  return "pending";
+};
+
+const artifactRefFromLegacy = (ref) => {
+  if (!ref) return null;
+  if (typeof ref !== "string") return null;
+  if (ref.startsWith("artifact:")) {
+    const artifactId = ref.replace("artifact:", "");
+    return {
+      artifact_id: artifactId,
+      label: artifactId,
+      href: `/records/artifacts/${artifactId}.json`,
+    };
+  }
+  return {
+    artifact_id: ref,
+    label: ref,
+    href: null,
+  };
+};
+
+const normalizeLegacySnapshot = (raw = {}) => {
+  const asOf = normalizeTimestamp(raw.meta?.timestamp);
+  const status = raw.meta?.global_status || "Unknown";
+  const units = toArray(raw.B_t?.A_t?.units);
+  const projectId = raw.meta?.project_id || "legacy-project";
+  const runs = units.map((unit) => ({
+    run_id: unit.unit_id || "unit",
+    status: mapLegacyStatus(status),
+    last_update_at: asOf,
+    owner: {
+      agent_id: unit.unit_id || "unit",
+      display_name: unit.jurisdiction || unit.unit_id || "unit",
+      role: "unit",
+      status: "active",
+    },
+    failure_count: toArray(unit.variance_memos).length,
+    next_action: unit.mandate_ref ? `Review ${unit.mandate_ref}` : "Review mandate",
+    todos: [],
+    metrics_summary: [
+      { name: "D_i", value: unit.D_i ?? "—", unit: null },
+      {
+        name: "Discretion spent",
+        value: unit.discretion_spent_this_iter ?? "—",
+        unit: null,
+      },
+    ],
+    artifact_refs: [
+      artifactRefFromLegacy(unit.mandate_ref),
+      ...toArray(unit.variance_memos).map(artifactRefFromLegacy),
+    ].filter(Boolean),
+  }));
+
+  const alerts = toArray(raw.alerts).map((alert, index) => ({
+    alert_id: alert.alert_id || `legacy-alert-${index + 1}`,
+    severity: normalizeSeverity(alert.severity),
+    run_id: alert.run_id || null,
+    message: alert.message || alert.type || "Legacy alert",
+    timestamp: asOf,
+    artifact_refs: toArray(alert.evidence_refs)
+      .map(artifactRefFromLegacy)
+      .filter(Boolean),
+  }));
+
+  return {
+    schema_version: "control-room-snapshot-v0",
+    as_of: asOf,
+    health: {
+      status,
+      data_freshness_seconds: computeFreshness(asOf),
+      active_alerts_count: alerts.length,
+    },
+    projects: [
+      {
+        project_id: projectId,
+        name: projectId,
+        status: mapLegacyStatus(status),
+        tracks: [
+          {
+            track_id: "legacy-units",
+            type: "legacy",
+            name: "Legacy Units",
+            status: mapLegacyStatus(status),
+            runs,
+          },
+        ],
+      },
+    ],
+    alerts,
+  };
+};
+
 const buildRunIndex = (snapshot) => {
   const projects = toArray(snapshot.projects);
   const runs = [];
@@ -313,12 +451,38 @@ const setStatusChip = (el, status) => {
   el.className = `chip status ${statusClasses[normalized] || "status-unknown"}`;
 };
 
-const renderHeader = (snapshot) => {
+const setText = (id, value) => {
+  const el = byId(id);
+  if (!el) return;
+  el.textContent = safeText(value);
+};
+
+const setPillState = (el, label, className) => {
+  if (!el) return;
+  el.textContent = label;
+  el.classList.remove("stale", "offline");
+  if (className) el.classList.add(className);
+};
+
+const flashElement = (el) => {
+  if (!el) return;
+  el.classList.remove("flash-update");
+  void el.offsetWidth;
+  el.classList.add("flash-update");
+  window.setTimeout(() => {
+    el.classList.remove("flash-update");
+  }, FLASH_DURATION_MS);
+};
+
+const hashPayload = (payload) => JSON.stringify(payload);
+
+const renderHeader = (snapshot, lastRefreshAt) => {
   setText("snapshot-time", snapshot.as_of);
   setText("snapshot-health", safeText(snapshot.health?.status, "Nominal"));
   setText(
     "snapshot-freshness",
-    snapshot.health?.data_freshness_seconds !== undefined
+    snapshot.health?.data_freshness_seconds !== undefined &&
+      snapshot.health?.data_freshness_seconds !== null
       ? `${snapshot.health.data_freshness_seconds}s`
       : "—"
   );
@@ -328,12 +492,21 @@ const renderHeader = (snapshot) => {
       ? snapshot.health.active_alerts_count
       : "0"
   );
-};
+  setText("snapshot-relative", snapshot.as_of ? relativeTime(snapshot.as_of) : "—");
+  setText(
+    "snapshot-refreshed",
+    lastRefreshAt ? relativeTime(lastRefreshAt) : "—"
+  );
 
-const setText = (id, value) => {
-  const el = byId(id);
-  if (!el) return;
-  el.textContent = safeText(value);
+  const staleness = snapshot.health?.data_freshness_seconds;
+  const staleLabel =
+    staleness === null || staleness === undefined
+      ? "Unknown"
+      : staleness > STALE_THRESHOLD_SECONDS
+      ? "Stale"
+      : "Fresh";
+  const staleEl = byId("snapshot-stale");
+  setPillState(staleEl, staleLabel, staleLabel === "Stale" ? "stale" : "");
 };
 
 const renderFilters = (snapshot) => {
@@ -408,6 +581,20 @@ const applyFilterFromQuery = () => {
   applyValue("filter-search", "search");
 };
 
+const updateFilterQuery = () => {
+  const filters = collectFilters();
+  const params = new URLSearchParams(window.location.search);
+  Object.entries(filters).forEach(([key, value]) => {
+    if (value) {
+      params.set(key, value);
+    } else {
+      params.delete(key);
+    }
+  });
+  const newUrl = `${window.location.pathname}?${params.toString()}`;
+  window.history.replaceState({}, "", newUrl);
+};
+
 const collectFilters = () => ({
   project: byId("filter-project")?.value || "",
   track: byId("filter-track")?.value || "",
@@ -437,7 +624,190 @@ const matchesFilter = (item, filters) => {
   return true;
 };
 
-const renderWorkboard = (snapshot) => {
+const setEmptyState = (id, message, isError = false) => {
+  const el = byId(id);
+  if (!el) return;
+  el.innerHTML = `<div class="empty${isError ? " error" : ""}">${message}</div>`;
+};
+
+const buildRunCard = (item) => {
+  const { project, track, run } = item;
+  const card = document.createElement("div");
+  card.className = "run-card";
+  card.dataset.runId = run.run_id || "unknown";
+  card.dataset.hash = hashPayload({ project, track, run });
+
+  const header = document.createElement("div");
+  header.className = "run-header";
+
+  const title = document.createElement("div");
+  title.className = "run-title";
+  title.innerHTML = `
+    <div class="run-name">${safeText(run.run_id)}</div>
+    <div class="run-subtitle">${safeText(project.name)} · ${safeText(track.name)}</div>
+  `;
+
+  const statusChip = document.createElement("span");
+  setStatusChip(statusChip, run.status);
+  const statusWrap = document.createElement("div");
+  statusWrap.className = "status-chip-group";
+  statusWrap.innerHTML = explainPanelHtml(
+    `info-run-status-${safeId(run.run_id)}`,
+    "Status",
+    explainers.runStatus,
+    "projects[].tracks[].runs[].status"
+  );
+  statusWrap.appendChild(statusChip);
+
+  const actions = document.createElement("div");
+  actions.className = "run-actions";
+
+  const toggleId = `run-extra-${safeId(run.run_id)}`;
+  const toggleButton = document.createElement("button");
+  toggleButton.type = "button";
+  toggleButton.className = "button ghost";
+  toggleButton.setAttribute("aria-expanded", "false");
+  toggleButton.setAttribute("aria-controls", toggleId);
+  toggleButton.textContent = "Expand";
+
+  const openButton = document.createElement("button");
+  openButton.type = "button";
+  openButton.className = "button primary";
+  openButton.id = `open-run-${safeId(run.run_id)}`;
+  openButton.textContent = "Open";
+  openButton.addEventListener("click", () => {
+    openDrawer({ project, track, run });
+  });
+
+  actions.appendChild(toggleButton);
+  actions.appendChild(openButton);
+
+  const meta = document.createElement("div");
+  meta.className = "run-meta";
+  meta.innerHTML = `
+    <div>${explainPanelHtml(
+      `info-run-owner-${safeId(run.run_id)}`,
+      "Owner",
+      explainers.runOwner,
+      "projects[].tracks[].runs[].owner.display_name"
+    )} ${safeText(run.owner?.display_name)}</div>
+    <div>${explainPanelHtml(
+      `info-run-updated-${safeId(run.run_id)}`,
+      "Updated",
+      explainers.runUpdated,
+      "projects[].tracks[].runs[].last_update_at"
+    )} ${relativeTime(run.last_update_at)}</div>
+    <div>${explainPanelHtml(
+      `info-run-failures-${safeId(run.run_id)}`,
+      "Failures",
+      explainers.runFailures,
+      "projects[].tracks[].runs[].failure_count"
+    )} ${safeText(run.failure_count, 0)}</div>
+    <div>${explainPanelHtml(
+      `info-run-next-${safeId(run.run_id)}`,
+      "Next",
+      explainers.runNext,
+      "projects[].tracks[].runs[].next_action"
+    )} ${safeText(run.next_action)}</div>
+  `;
+
+  const extra = document.createElement("div");
+  extra.className = "run-extra";
+  extra.id = toggleId;
+
+  const metrics = document.createElement("div");
+  metrics.className = "chip-row";
+  if (toArray(run.metrics_summary).length > 0) {
+    const metricsLabel = document.createElement("span");
+    metricsLabel.innerHTML = explainPanelHtml(
+      `info-run-metrics-${safeId(run.run_id)}`,
+      "Metrics",
+      explainers.runMetrics,
+      "projects[].tracks[].runs[].metrics_summary[]"
+    );
+    metrics.appendChild(metricsLabel);
+  }
+  toArray(run.metrics_summary).forEach((metric) => {
+    const chip = document.createElement("span");
+    chip.className = "chip neutral";
+    chip.textContent = `${metric.name}: ${metricValue(metric)}`;
+    metrics.appendChild(chip);
+  });
+
+  const artifacts = document.createElement("div");
+  artifacts.className = "artifact-links";
+  if (toArray(run.artifact_refs).length > 0) {
+    const artifactLabel = document.createElement("span");
+    artifactLabel.innerHTML = explainPanelHtml(
+      `info-run-artifacts-${safeId(run.run_id)}`,
+      "Artifacts",
+      explainers.runArtifacts,
+      "projects[].tracks[].runs[].artifact_refs[]"
+    );
+    artifacts.appendChild(artifactLabel);
+  }
+  toArray(run.artifact_refs).forEach((artifact) => {
+    const link = document.createElement("a");
+    link.href = artifact.href || "#";
+    link.textContent = artifact.label || artifact.artifact_id;
+    artifacts.appendChild(link);
+  });
+
+  const todoList = document.createElement("div");
+  todoList.className = "todo-list";
+
+  if (toArray(run.todos).length === 0) {
+    todoList.innerHTML = '<div class="empty">No todos assigned.</div>';
+  } else {
+    toArray(run.todos).forEach((todo) => {
+      const todoItem = document.createElement("div");
+      todoItem.className = "todo-item";
+      todoItem.innerHTML = `
+        <div>
+          <div class="todo-title">${safeText(todo.title)}</div>
+          <div class="todo-meta">
+            ${safeText(todo.status)} · ${relativeTime(todo.updated_at)} · ${safeText(
+        todo.owner_agent_id
+      )}
+          </div>
+          <div class="todo-meta">${safeText(todo.blocking_reason)}</div>
+        </div>
+      `;
+      const refs = document.createElement("div");
+      refs.className = "todo-artifacts";
+      toArray(todo.artifact_refs).forEach((artifact) => {
+        const link = document.createElement("a");
+        link.href = artifact.href || "#";
+        link.textContent = artifact.label || artifact.artifact_id;
+        refs.appendChild(link);
+      });
+      todoItem.appendChild(refs);
+      todoList.appendChild(todoItem);
+    });
+  }
+
+  extra.appendChild(metrics);
+  if (artifacts.children.length > 0) extra.appendChild(artifacts);
+  extra.appendChild(todoList);
+
+  toggleButton.addEventListener("click", () => {
+    const isOpen = extra.classList.toggle("is-open");
+    toggleButton.setAttribute("aria-expanded", String(isOpen));
+    toggleButton.textContent = isOpen ? "Collapse" : "Expand";
+  });
+
+  header.appendChild(title);
+  header.appendChild(statusWrap);
+  header.appendChild(actions);
+
+  card.appendChild(header);
+  card.appendChild(meta);
+  card.appendChild(extra);
+
+  return card;
+};
+
+const renderWorkboard = (snapshot, options = {}) => {
   const list = byId("workboard-list");
   if (!list) return;
   const filters = collectFilters();
@@ -445,164 +815,43 @@ const renderWorkboard = (snapshot) => {
     matchesFilter(item, filters)
   );
 
-  list.innerHTML = "";
-
   if (runs.length === 0) {
     list.innerHTML = '<div class="empty">No runs match current filters.</div>';
     return;
   }
 
-  runs.forEach((item) => {
-    const { project, track, run } = item;
-    const card = document.createElement("div");
-    card.className = "run-card";
+  if (list.querySelector(".empty")) {
+    list.innerHTML = "";
+  }
 
-    const header = document.createElement("div");
-    header.className = "run-header";
-
-    const title = document.createElement("div");
-    title.className = "run-title";
-    title.innerHTML = `
-      <div class="run-name">${safeText(run.run_id)}</div>
-      <div class="run-subtitle">${safeText(project.name)} · ${safeText(track.name)}</div>
-    `;
-
-    const statusChip = document.createElement("span");
-    setStatusChip(statusChip, run.status);
-    const statusWrap = document.createElement("div");
-    statusWrap.className = "status-chip-group";
-    statusWrap.innerHTML = explainPanelHtml(
-      `info-run-status-${safeId(run.run_id)}`,
-      "Status",
-      explainers.runStatus,
-      "projects[].tracks[].runs[].status"
-    );
-    statusWrap.appendChild(statusChip);
-
-    const meta = document.createElement("div");
-    meta.className = "run-meta";
-    meta.innerHTML = `
-      <div>${explainPanelHtml(
-        `info-run-owner-${safeId(run.run_id)}`,
-        "Owner",
-        explainers.runOwner,
-        "projects[].tracks[].runs[].owner.display_name"
-      )} ${safeText(run.owner?.display_name)}</div>
-      <div>${explainPanelHtml(
-        `info-run-updated-${safeId(run.run_id)}`,
-        "Updated",
-        explainers.runUpdated,
-        "projects[].tracks[].runs[].last_update_at"
-      )} ${relativeTime(run.last_update_at)}</div>
-      <div>${explainPanelHtml(
-        `info-run-failures-${safeId(run.run_id)}`,
-        "Failures",
-        explainers.runFailures,
-        "projects[].tracks[].runs[].failure_count"
-      )} ${safeText(run.failure_count, 0)}</div>
-      <div>${explainPanelHtml(
-        `info-run-next-${safeId(run.run_id)}`,
-        "Next",
-        explainers.runNext,
-        "projects[].tracks[].runs[].next_action"
-      )} ${safeText(run.next_action)}</div>
-    `;
-
-    const metrics = document.createElement("div");
-    metrics.className = "chip-row";
-    if (toArray(run.metrics_summary).length > 0) {
-      const metricsLabel = document.createElement("span");
-      metricsLabel.innerHTML = explainPanelHtml(
-        `info-run-metrics-${safeId(run.run_id)}`,
-        "Metrics",
-        explainers.runMetrics,
-        "projects[].tracks[].runs[].metrics_summary[]"
-      );
-      metrics.appendChild(metricsLabel);
-    }
-    toArray(run.metrics_summary).forEach((metric) => {
-      const chip = document.createElement("span");
-      chip.className = "chip neutral";
-      chip.textContent = `${metric.name}: ${metricValue(metric)}`;
-      metrics.appendChild(chip);
-    });
-
-    const artifacts = document.createElement("div");
-    artifacts.className = "artifact-links";
-    if (toArray(run.artifact_refs).length > 0) {
-      const artifactLabel = document.createElement("span");
-      artifactLabel.innerHTML = explainPanelHtml(
-        `info-run-artifacts-${safeId(run.run_id)}`,
-        "Artifacts",
-        explainers.runArtifacts,
-        "projects[].tracks[].runs[].artifact_refs[]"
-      );
-      artifacts.appendChild(artifactLabel);
-    }
-    toArray(run.artifact_refs).forEach((artifact) => {
-      const link = document.createElement("a");
-      link.href = artifact.href || "#";
-      link.textContent = artifact.label || artifact.artifact_id;
-      artifacts.appendChild(link);
-    });
-
-    const todoDrawer = document.createElement("details");
-    todoDrawer.className = "todo-drawer";
-    const summary = document.createElement("summary");
-    summary.innerHTML = `${explainPanelHtml(
-      `info-run-todos-${safeId(run.run_id)}`,
-      "Todos",
-      explainers.runTodos,
-      "projects[].tracks[].runs[].todos[]"
-    )} <span class="todo-count">(${toArray(run.todos).length})</span>`;
-    todoDrawer.appendChild(summary);
-
-    const todoList = document.createElement("div");
-    todoList.className = "todo-list";
-
-    if (toArray(run.todos).length === 0) {
-      todoList.innerHTML = '<div class="empty">No todos assigned.</div>';
-    } else {
-      toArray(run.todos).forEach((todo) => {
-        const todoItem = document.createElement("div");
-        todoItem.className = "todo-item";
-        todoItem.innerHTML = `
-          <div>
-            <div class="todo-title">${safeText(todo.title)}</div>
-            <div class="todo-meta">
-              ${safeText(todo.status)} · ${relativeTime(todo.updated_at)} · ${safeText(
-          todo.owner_agent_id
-        )}
-            </div>
-            <div class="todo-meta">${safeText(todo.blocking_reason)}</div>
-          </div>
-        `;
-        const refs = document.createElement("div");
-        refs.className = "todo-artifacts";
-        toArray(todo.artifact_refs).forEach((artifact) => {
-          const link = document.createElement("a");
-          link.href = artifact.href || "#";
-          link.textContent = artifact.label || artifact.artifact_id;
-          refs.appendChild(link);
-        });
-        todoItem.appendChild(refs);
-        todoList.appendChild(todoItem);
-      });
-    }
-
-    todoDrawer.appendChild(todoList);
-
-    header.appendChild(title);
-    header.appendChild(statusWrap);
-
-    card.appendChild(header);
-    card.appendChild(meta);
-    if (metrics.children.length > 0) card.appendChild(metrics);
-    if (artifacts.children.length > 0) card.appendChild(artifacts);
-    card.appendChild(todoDrawer);
-
-    list.appendChild(card);
+  const scrollTop = list.scrollTop;
+  const existing = new Map();
+  list.querySelectorAll(".run-card").forEach((card) => {
+    existing.set(card.dataset.runId, card);
   });
+
+  runs.forEach((item) => {
+    const runId = item.run.run_id || "unknown";
+    const nextHash = hashPayload(item);
+    const current = existing.get(runId);
+    if (!current) {
+      const newCard = buildRunCard(item);
+      list.appendChild(newCard);
+      if (options.flash) flashElement(newCard);
+      return;
+    }
+    if (current.dataset.hash !== nextHash) {
+      const newCard = buildRunCard(item);
+      current.replaceWith(newCard);
+      if (options.flash) flashElement(newCard);
+    } else {
+      list.appendChild(current);
+    }
+    existing.delete(runId);
+  });
+
+  existing.forEach((card) => card.remove());
+  list.scrollTop = scrollTop;
 };
 
 const renderSpotlight = (snapshot) => {
@@ -692,83 +941,139 @@ const renderTodoFeed = (snapshot) => {
   });
 };
 
-const renderHierarchy = (snapshot) => {
+const buildHierarchyNodeMap = (snapshot) => {
+  const nodes = new Map();
+  const projects = toArray(snapshot.projects);
+  projects.forEach((project) => {
+    nodes.set(`project:${project.project_id}`, {
+      label: project.name || project.project_id,
+      status: project.status,
+      extra: `${toArray(project.tracks).length} tracks`,
+      data: project,
+    });
+
+    toArray(project.tracks).forEach((track) => {
+      nodes.set(`track:${track.track_id}`, {
+        label: track.name || track.track_id,
+        status: track.status,
+        extra: `${toArray(track.runs).length} runs · ${safeText(track.type)}`,
+        data: track,
+      });
+
+      toArray(track.runs).forEach((run) => {
+        nodes.set(`run:${run.run_id}`, {
+          label: run.run_id,
+          status: run.status,
+          extra: `${safeText(run.owner?.display_name)} · ${safeText(run.next_action)}`,
+          data: run,
+        });
+
+        if (run.owner?.agent_id) {
+          nodes.set(`agent:${run.owner.agent_id}`, {
+            label: run.owner.display_name || run.owner.agent_id,
+            status: run.owner.status || "active",
+            extra: run.owner.role || "",
+            data: run.owner,
+          });
+
+          toArray(run.todos).forEach((todo) => {
+            nodes.set(`todo:${todo.todo_id}`, {
+              label: todo.title || todo.todo_id,
+              status: todo.status,
+              extra: `Updated ${relativeTime(todo.updated_at)}`,
+              data: todo,
+            });
+          });
+        }
+      });
+    });
+  });
+  return nodes;
+};
+
+const buildHierarchySignature = (nodeMap) =>
+  Array.from(nodeMap.keys()).join("|");
+
+const createHierarchyNode = (key, nodeData) => {
+  const statusId = `info-node-status-${safeId(key)}`;
+  const node = document.createElement("button");
+  node.type = "button";
+  node.className = "hierarchy-node";
+  node.dataset.nodeKey = key;
+  node.dataset.hash = hashPayload(nodeData);
+  node.innerHTML = `
+    <div class="hierarchy-node-header">
+      <span class="hierarchy-node-title">${nodeData.label}</span>
+      <span class="status-chip-group">
+        ${explainPanelHtml(statusId, "Status", explainers.nodeStatus, "status")}
+        <span class="chip status">${safeText(nodeData.status).toUpperCase()}</span>
+      </span>
+    </div>
+    <div class="hierarchy-node-meta">${safeText(nodeData.extra)}</div>
+  `;
+  const chip = node.querySelector(".chip.status");
+  setStatusChip(chip, nodeData.status);
+  return node;
+};
+
+const renderHierarchy = (snapshot, options = {}) => {
   const tree = byId("hierarchy-tree");
   if (!tree) return;
   tree.innerHTML = "";
 
-  const nodeIndex = new Map();
+  const nodeMap = buildHierarchyNodeMap(snapshot);
+  currentHierarchySignature = buildHierarchySignature(nodeMap);
+  hierarchyNodeIndex = new Map();
 
-  const createNode = (type, id, label, status, extra) => {
-    const statusId = `info-node-status-${safeId(`${type}-${id}`)}`;
-    const node = document.createElement("button");
-    node.type = "button";
-    node.className = "hierarchy-node";
-    node.dataset.nodeKey = `${type}:${id}`;
-    node.innerHTML = `
-      <div class="hierarchy-node-header">
-        <span class="hierarchy-node-title">${label}</span>
-        <span class="status-chip-group">
-          ${explainPanelHtml(statusId, "Status", explainers.nodeStatus, "status")}
-          <span class="chip status">${safeText(status).toUpperCase()}</span>
-        </span>
-      </div>
-      <div class="hierarchy-node-meta">${safeText(extra)}</div>
-    `;
-    const chip = node.querySelector(".chip.status");
-    setStatusChip(chip, status);
-    return node;
-  };
+  const projects = toArray(snapshot.projects);
+  if (projects.length === 0) {
+    tree.innerHTML = '<div class="empty">No hierarchy data available.</div>';
+    return;
+  }
 
-  toArray(snapshot.projects).forEach((project) => {
-    const projectNode = createNode(
-      "project",
-      project.project_id,
-      project.name || project.project_id,
-      project.status,
-      `${toArray(project.tracks).length} tracks`
+  projects.forEach((project) => {
+    const projectNode = createHierarchyNode(
+      `project:${project.project_id}`,
+      nodeMap.get(`project:${project.project_id}`)
     );
-    nodeIndex.set(`project:${project.project_id}`, { type: "project", data: project });
+    hierarchyNodeIndex.set(`project:${project.project_id}`, {
+      type: "project",
+      data: project,
+    });
 
     const projectGroup = document.createElement("div");
     projectGroup.className = "hierarchy-group";
     projectGroup.appendChild(projectNode);
 
     toArray(project.tracks).forEach((track) => {
-      const trackNode = createNode(
-        "track",
-        track.track_id,
-        track.name || track.track_id,
-        track.status,
-        `${toArray(track.runs).length} runs · ${safeText(track.type)}`
+      const trackNode = createHierarchyNode(
+        `track:${track.track_id}`,
+        nodeMap.get(`track:${track.track_id}`)
       );
-      nodeIndex.set(`track:${track.track_id}`, { type: "track", data: track });
+      hierarchyNodeIndex.set(`track:${track.track_id}`, {
+        type: "track",
+        data: track,
+      });
       const trackGroup = document.createElement("div");
       trackGroup.className = "hierarchy-group nested";
       trackGroup.appendChild(trackNode);
 
       toArray(track.runs).forEach((run) => {
-        const runNode = createNode(
-          "run",
-          run.run_id,
-          run.run_id,
-          run.status,
-          `${safeText(run.owner?.display_name)} · ${safeText(run.next_action)}`
+        const runNode = createHierarchyNode(
+          `run:${run.run_id}`,
+          nodeMap.get(`run:${run.run_id}`)
         );
-        nodeIndex.set(`run:${run.run_id}`, { type: "run", data: run });
+        hierarchyNodeIndex.set(`run:${run.run_id}`, { type: "run", data: run });
         const runGroup = document.createElement("div");
         runGroup.className = "hierarchy-group nested";
         runGroup.appendChild(runNode);
 
         if (run.owner?.agent_id) {
-          const agentNode = createNode(
-            "agent",
-            run.owner.agent_id,
-            run.owner.display_name || run.owner.agent_id,
-            run.owner.status || "active",
-            run.owner.role || ""
+          const agentNode = createHierarchyNode(
+            `agent:${run.owner.agent_id}`,
+            nodeMap.get(`agent:${run.owner.agent_id}`)
           );
-          nodeIndex.set(`agent:${run.owner.agent_id}`, {
+          hierarchyNodeIndex.set(`agent:${run.owner.agent_id}`, {
             type: "agent",
             data: run.owner,
           });
@@ -777,14 +1082,14 @@ const renderHierarchy = (snapshot) => {
           agentGroup.appendChild(agentNode);
 
           toArray(run.todos).forEach((todo) => {
-            const todoNode = createNode(
-              "todo",
-              todo.todo_id,
-              todo.title || todo.todo_id,
-              todo.status,
-              `Updated ${relativeTime(todo.updated_at)}`
+            const todoNode = createHierarchyNode(
+              `todo:${todo.todo_id}`,
+              nodeMap.get(`todo:${todo.todo_id}`)
             );
-            nodeIndex.set(`todo:${todo.todo_id}`, { type: "todo", data: todo });
+            hierarchyNodeIndex.set(`todo:${todo.todo_id}`, {
+              type: "todo",
+              data: todo,
+            });
             const todoGroup = document.createElement("div");
             todoGroup.className = "hierarchy-group nested";
             todoGroup.appendChild(todoNode);
@@ -800,16 +1105,44 @@ const renderHierarchy = (snapshot) => {
     tree.appendChild(projectGroup);
   });
 
-  const detailPanel = byId("node-detail");
-  if (!detailPanel) return;
-
-  tree.querySelectorAll(".hierarchy-node").forEach((node) => {
-    node.addEventListener("click", () => {
-      const key = node.dataset.nodeKey;
-      const entry = nodeIndex.get(key);
-      if (!entry) return;
-      renderNodeDetail(detailPanel, entry);
+  if (options.flash) {
+    tree.querySelectorAll(".hierarchy-node").forEach((node) => {
+      flashElement(node);
     });
+  }
+};
+
+const updateHierarchyNodes = (snapshot, options = {}) => {
+  const tree = byId("hierarchy-tree");
+  if (!tree) return;
+
+  const nodeMap = buildHierarchyNodeMap(snapshot);
+  const signature = buildHierarchySignature(nodeMap);
+  const nodeCount = tree.querySelectorAll(".hierarchy-node").length;
+  if (signature !== currentHierarchySignature || nodeCount !== nodeMap.size) {
+    const scrollTop = tree.scrollTop;
+    renderHierarchy(snapshot, options);
+    tree.scrollTop = scrollTop;
+    return;
+  }
+
+  hierarchyNodeIndex = new Map();
+  nodeMap.forEach((nodeData, key) => {
+    const node = tree.querySelector(`[data-node-key="${key}"]`);
+    if (!node) return;
+    const nextHash = hashPayload(nodeData);
+    if (node.dataset.hash !== nextHash) {
+      node.dataset.hash = nextHash;
+      const title = node.querySelector(".hierarchy-node-title");
+      const meta = node.querySelector(".hierarchy-node-meta");
+      const chip = node.querySelector(".chip.status");
+      if (title) title.textContent = nodeData.label;
+      if (meta) meta.textContent = safeText(nodeData.extra);
+      if (chip) setStatusChip(chip, nodeData.status);
+      if (options.flash) flashElement(node);
+    }
+    const [type] = key.split(":");
+    hierarchyNodeIndex.set(key, { type, data: nodeData.data });
   });
 };
 
@@ -850,86 +1183,445 @@ const renderNodeDetail = (panel, entry) => {
   }
 
   panel.appendChild(header);
-  panel.appendChild(list);
+  if (list.children.length > 0) panel.appendChild(list);
   if (artifactRefs.length > 0) panel.appendChild(artifacts);
 };
 
-const renderAlerts = (snapshot) => {
+const buildAlertCard = (alert) => {
+  const card = document.createElement("div");
+  card.className = "alert-card";
+  card.dataset.alertId = alert.alert_id || "alert";
+  card.dataset.hash = hashPayload(alert);
+  const severityId = `info-alert-severity-${safeId(alert.alert_id)}`;
+  const runInfoId = `info-alert-run-${safeId(alert.alert_id)}`;
+  card.innerHTML = `
+    <div class="alert-header">
+      <span class="status-chip-group">
+        ${explainPanelHtml(
+          severityId,
+          "Severity",
+          explainers.alertSeverity,
+          "alerts[].severity"
+        )}
+        <span class="chip ${alert.severity}">${safeText(alert.severity)}</span>
+      </span>
+      <span>${relativeTime(alert.timestamp)}</span>
+    </div>
+    <div class="alert-message">${safeText(alert.message)}</div>
+    <div class="alert-meta">${explainPanelHtml(
+      runInfoId,
+      "Run",
+      explainers.alertRun,
+      "alerts[].run_id"
+    )} ${safeText(alert.run_id)}</div>
+  `;
+  const refs = document.createElement("div");
+  refs.className = "alert-artifacts";
+  toArray(alert.artifact_refs).forEach((artifact) => {
+    const link = document.createElement("a");
+    link.href = artifact.href || "#";
+    link.textContent = artifact.label || artifact.artifact_id;
+    refs.appendChild(link);
+  });
+  card.appendChild(refs);
+  return card;
+};
+
+const renderAlerts = (snapshot, options = {}) => {
   const alerts = byId("alerts-rail");
   if (!alerts) return;
   const alertItems = buildAlertIndex(snapshot);
-  alerts.innerHTML = "";
 
   if (alertItems.length === 0) {
     alerts.innerHTML = '<div class="empty">No alerts.</div>';
     return;
   }
 
+  if (alerts.querySelector(".empty")) {
+    alerts.innerHTML = "";
+  }
+
+  const scrollTop = alerts.scrollTop;
+  const existing = new Map();
+  alerts.querySelectorAll(".alert-card").forEach((card) => {
+    existing.set(card.dataset.alertId, card);
+  });
+
   alertItems.forEach((alert) => {
-    const card = document.createElement("div");
-    card.className = "alert-card";
-    const severityId = `info-alert-severity-${safeId(alert.alert_id)}`;
-    const runInfoId = `info-alert-run-${safeId(alert.alert_id)}`;
-    card.innerHTML = `
-      <div class="alert-header">
-        <span class="status-chip-group">
-          ${explainPanelHtml(
-            severityId,
-            "Severity",
-            explainers.alertSeverity,
-            "alerts[].severity"
-          )}
-          <span class="chip ${alert.severity}">${safeText(alert.severity)}</span>
-        </span>
-        <span>${relativeTime(alert.timestamp)}</span>
-      </div>
-      <div class="alert-message">${safeText(alert.message)}</div>
-      <div class="alert-meta">${explainPanelHtml(
-        runInfoId,
-        "Run",
-        explainers.alertRun,
-        "alerts[].run_id"
-      )} ${safeText(alert.run_id)}</div>
-    `;
-    const refs = document.createElement("div");
-    refs.className = "alert-artifacts";
-    toArray(alert.artifact_refs).forEach((artifact) => {
+    const alertId = alert.alert_id || "alert";
+    const nextHash = hashPayload(alert);
+    const current = existing.get(alertId);
+    if (!current) {
+      const newCard = buildAlertCard(alert);
+      alerts.appendChild(newCard);
+      if (options.flash) flashElement(newCard);
+      return;
+    }
+    if (current.dataset.hash !== nextHash) {
+      const newCard = buildAlertCard(alert);
+      current.replaceWith(newCard);
+      if (options.flash) flashElement(newCard);
+    } else {
+      alerts.appendChild(current);
+    }
+    existing.delete(alertId);
+  });
+
+  existing.forEach((card) => card.remove());
+  alerts.scrollTop = scrollTop;
+};
+
+const renderDrawerContent = (payload) => {
+  const drawerBody = byId("drawer-body");
+  const drawerTitle = byId("drawer-title");
+  const drawerSubtitle = byId("drawer-subtitle");
+  if (!drawerBody || !drawerTitle || !drawerSubtitle) return;
+
+  if (!payload) {
+    drawerTitle.textContent = "Run detail";
+    drawerSubtitle.textContent = "Select a run to inspect.";
+    drawerBody.innerHTML = '<div class="empty">No run selected.</div>';
+    return;
+  }
+
+  const { project, track, run } = payload;
+  drawerTitle.textContent = `Run · ${safeText(run.run_id)}`;
+  drawerSubtitle.textContent = `${safeText(project.name)} · ${safeText(track.name)}`;
+  drawerBody.innerHTML = "";
+
+  const summary = document.createElement("div");
+  summary.className = "drawer-section";
+  summary.innerHTML = `
+    <div class="detail-list">
+      <div class="detail-row"><span>Status</span><span>${safeText(run.status)}</span></div>
+      <div class="detail-row"><span>Owner</span><span>${safeText(run.owner?.display_name)}</span></div>
+      <div class="detail-row"><span>Next action</span><span>${safeText(run.next_action)}</span></div>
+      <div class="detail-row"><span>Last update</span><span>${relativeTime(run.last_update_at)}</span></div>
+      <div class="detail-row"><span>Failures</span><span>${safeText(run.failure_count, 0)}</span></div>
+    </div>
+  `;
+
+  const metrics = document.createElement("div");
+  metrics.className = "drawer-section";
+  if (toArray(run.metrics_summary).length > 0) {
+    const label = document.createElement("div");
+    label.className = "detail-subtitle";
+    label.textContent = "Metrics";
+    metrics.appendChild(label);
+    const chips = document.createElement("div");
+    chips.className = "chip-row";
+    toArray(run.metrics_summary).forEach((metric) => {
+      const chip = document.createElement("span");
+      chip.className = "chip neutral";
+      chip.textContent = `${metric.name}: ${metricValue(metric)}`;
+      chips.appendChild(chip);
+    });
+    metrics.appendChild(chips);
+  } else {
+    metrics.innerHTML = '<div class="empty">No metrics provided.</div>';
+  }
+
+  const artifacts = document.createElement("div");
+  artifacts.className = "drawer-section";
+  if (toArray(run.artifact_refs).length > 0) {
+    const label = document.createElement("div");
+    label.className = "detail-subtitle";
+    label.textContent = "Artifacts";
+    artifacts.appendChild(label);
+    const links = document.createElement("div");
+    links.className = "artifact-links";
+    toArray(run.artifact_refs).forEach((artifact) => {
       const link = document.createElement("a");
       link.href = artifact.href || "#";
       link.textContent = artifact.label || artifact.artifact_id;
-      refs.appendChild(link);
+      links.appendChild(link);
     });
-    card.appendChild(refs);
-    alerts.appendChild(card);
+    artifacts.appendChild(links);
+  } else {
+    artifacts.innerHTML = '<div class="empty">No artifacts linked.</div>';
+  }
+
+  const todos = document.createElement("div");
+  todos.className = "drawer-section";
+  const todoLabel = document.createElement("div");
+  todoLabel.className = "detail-subtitle";
+  todoLabel.textContent = "Todos";
+  todos.appendChild(todoLabel);
+
+  const todoList = document.createElement("div");
+  todoList.className = "todo-list";
+  if (toArray(run.todos).length === 0) {
+    todoList.innerHTML = '<div class="empty">No todos assigned.</div>';
+  } else {
+    toArray(run.todos).forEach((todo) => {
+      const todoItem = document.createElement("div");
+      todoItem.className = "todo-item";
+      todoItem.innerHTML = `
+        <div>
+          <div class="todo-title">${safeText(todo.title)}</div>
+          <div class="todo-meta">${safeText(todo.status)} · ${relativeTime(
+        todo.updated_at
+      )}</div>
+        </div>
+      `;
+      todoList.appendChild(todoItem);
+    });
+  }
+  todos.appendChild(todoList);
+
+  drawerBody.appendChild(summary);
+  drawerBody.appendChild(metrics);
+  drawerBody.appendChild(artifacts);
+  drawerBody.appendChild(todos);
+};
+
+const findRunById = (snapshot, runId) => {
+  if (!snapshot || !runId) return null;
+  return buildRunIndex(snapshot).find((item) => item.run.run_id === runId) || null;
+};
+
+const updateDrawerIfOpen = (snapshot) => {
+  const drawer = byId("run-drawer");
+  if (!drawer || !drawer.classList.contains("is-open")) return;
+  if (!selectedRunId) return;
+  const match = findRunById(snapshot, selectedRunId);
+  if (match) {
+    renderDrawerContent(match);
+  }
+};
+
+let lastRefreshAt = null;
+let refreshTimer = null;
+let pollingTimer = null;
+let focusTrapCleanup = null;
+let currentSnapshot = null;
+let currentHierarchySignature = "";
+let hierarchyNodeIndex = new Map();
+let selectedRunId = null;
+let transportMode = "POLLING";
+let lastErrorMessage = null;
+let sseSource = null;
+
+const trapFocus = (container) => {
+  const selectors = [
+    "a[href]",
+    "button",
+    "textarea",
+    "input",
+    "select",
+    "[tabindex]:not([tabindex='-1'])",
+  ];
+  const focusable = Array.from(container.querySelectorAll(selectors.join(", ")))
+    .filter((el) => !el.hasAttribute("disabled"));
+  if (focusable.length === 0) return () => {};
+  const first = focusable[0];
+  const last = focusable[focusable.length - 1];
+
+  const handleKeydown = (event) => {
+    if (event.key !== "Tab") return;
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  };
+
+  container.addEventListener("keydown", handleKeydown);
+  return () => container.removeEventListener("keydown", handleKeydown);
+};
+
+const openDrawer = (payload) => {
+  const drawer = byId("run-drawer");
+  if (!drawer) return;
+  const panel = drawer.querySelector(".drawer-panel");
+  const closeButton = drawer.querySelector("[data-drawer-close]");
+  const lastFocused = document.activeElement;
+
+  selectedRunId = payload?.run?.run_id || null;
+  renderDrawerContent(payload);
+  drawer.classList.add("is-open");
+  drawer.setAttribute("aria-hidden", "false");
+
+  if (closeButton) {
+    closeButton.focus();
+  }
+
+  if (panel) {
+    if (focusTrapCleanup) focusTrapCleanup();
+    focusTrapCleanup = trapFocus(panel);
+  }
+
+  drawer.dataset.lastFocusId = lastFocused?.id || "";
+};
+
+const closeDrawer = () => {
+  const drawer = byId("run-drawer");
+  if (!drawer) return;
+  drawer.classList.remove("is-open");
+  drawer.setAttribute("aria-hidden", "true");
+  if (focusTrapCleanup) focusTrapCleanup();
+  focusTrapCleanup = null;
+  selectedRunId = null;
+
+  const lastFocusId = drawer.dataset.lastFocusId;
+  if (lastFocusId) {
+    const el = byId(lastFocusId);
+    if (el) el.focus();
+  }
+};
+
+const initDrawer = () => {
+  const drawer = byId("run-drawer");
+  if (!drawer) return;
+  drawer.querySelectorAll("[data-drawer-close]").forEach((el) => {
+    el.addEventListener("click", closeDrawer);
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && drawer.classList.contains("is-open")) {
+      closeDrawer();
+    }
   });
 };
 
-const renderSnapshot = (snapshot) => {
-  renderHeader(snapshot);
+const initHierarchySelection = () => {
+  const tree = byId("hierarchy-tree");
+  if (!tree) return;
+  if (tree.dataset.bound === "true") return;
+  tree.dataset.bound = "true";
+  tree.addEventListener("click", (event) => {
+    const target = event.target.closest(".hierarchy-node");
+    if (!target) return;
+    const key = target.dataset.nodeKey;
+    const entry = hierarchyNodeIndex.get(key);
+    if (!entry) return;
+    const detailPanel = byId("node-detail");
+    if (!detailPanel) return;
+    renderNodeDetail(detailPanel, entry);
+  });
+};
+
+const applyUpdate = (snapshot, options = {}) => {
+  currentSnapshot = snapshot;
+  renderHeader(snapshot, lastRefreshAt);
   renderFilters(snapshot);
-  renderWorkboard(snapshot);
+  renderWorkboard(snapshot, options);
   renderSpotlight(snapshot);
   renderTodoFeed(snapshot);
-  renderHierarchy(snapshot);
-  renderAlerts(snapshot);
+  updateHierarchyNodes(snapshot, options);
+  renderAlerts(snapshot, options);
+  updateDrawerIfOpen(snapshot);
   initExplainPanels();
 };
 
-const startPolling = (path) => {
-  const statusLabel = byId("snapshot-status");
+const setConnectionStatus = (status, message = null) => {
+  const label = byId("snapshot-status");
+  if (!label) return;
+  label.classList.remove("offline", "live", "polling");
+  const normalized = status.toUpperCase();
+  if (normalized === "LIVE") label.classList.add("live");
+  if (normalized === "POLLING") label.classList.add("polling");
+  if (normalized === "OFFLINE") label.classList.add("offline");
+  label.textContent = normalized;
+  label.title = message || "";
+  transportMode = normalized;
+  lastErrorMessage = message;
+};
+
+const loadSnapshotWithFallback = async () => {
+  const sources = getSnapshotSources();
+  let lastError = null;
+  for (const source of sources) {
+    try {
+      const raw = await fetchSnapshot(source.path);
+      if (source.type === "legacy") {
+        return normalizeLegacySnapshot(raw);
+      }
+      return normalizeControlRoomSnapshot(raw);
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  throw lastError || new Error("No snapshot sources available");
+};
+
+const getStreamUrl = () => {
+  const params = new URLSearchParams(window.location.search);
+  return params.get("stream") || STREAM_ENDPOINT;
+};
+
+const stopLiveTransport = () => {
+  if (sseSource) {
+    sseSource.close();
+    sseSource = null;
+  }
+};
+
+const startLiveTransport = () => {
+  if (!window.EventSource) return false;
+  stopLiveTransport();
+  try {
+    const source = new EventSource(getStreamUrl());
+    sseSource = source;
+    source.addEventListener("open", () => {
+      setConnectionStatus("LIVE");
+      if (pollingTimer) {
+        clearInterval(pollingTimer);
+        pollingTimer = null;
+      }
+    });
+    source.addEventListener("snapshot", (event) => {
+      try {
+        const raw = JSON.parse(event.data);
+        const snapshot = normalizeControlRoomSnapshot(raw);
+        lastRefreshAt = new Date().toISOString();
+        applyUpdate(snapshot, { flash: true });
+        setConnectionStatus("LIVE");
+      } catch (error) {
+        console.error(error);
+      }
+    });
+    source.addEventListener("error", (event) => {
+      console.warn("SSE error", event);
+      stopLiveTransport();
+      setConnectionStatus("POLLING", "SSE disconnected");
+      startPollingFallback();
+    });
+    return true;
+  } catch (error) {
+    console.error(error);
+    return false;
+  }
+};
+
+const startPollingFallback = () => {
   const load = async () => {
     try {
-      const snapshot = await fetchSnapshot(path);
-      renderSnapshot(snapshot);
-      if (statusLabel) statusLabel.textContent = "Live";
+      setConnectionStatus("POLLING");
+      const snapshot = await loadSnapshotWithFallback();
+      lastRefreshAt = new Date().toISOString();
+      applyUpdate(snapshot, { flash: true });
     } catch (error) {
-      if (statusLabel) statusLabel.textContent = "Offline";
+      setConnectionStatus("OFFLINE", error?.message || "Polling failed");
+      setEmptyState("workboard-list", "Snapshot unavailable.", true);
+      setEmptyState("failure-spotlight", "Snapshot unavailable.", true);
+      setEmptyState("todo-feed", "Snapshot unavailable.", true);
+      setEmptyState("hierarchy-tree", "Snapshot unavailable.", true);
+      setEmptyState("alerts-rail", "Snapshot unavailable.", true);
       console.error(error);
     }
   };
 
+  if (pollingTimer) clearInterval(pollingTimer);
   load();
-  setInterval(load, POLL_INTERVAL_MS);
+  if (refreshTimer) clearInterval(refreshTimer);
+  refreshTimer = setInterval(() => {
+    if (lastRefreshAt) {
+      setText("snapshot-refreshed", relativeTime(lastRefreshAt));
+    }
+  }, REFRESH_LABEL_INTERVAL_MS);
+  pollingTimer = setInterval(load, POLL_INTERVAL_MS);
 };
 
 const initControls = () => {
@@ -944,10 +1636,16 @@ const initControls = () => {
     const control = byId(id);
     if (!control) return;
     control.addEventListener("change", () => {
-      fetchSnapshot(getSnapshotPath()).then(renderSnapshot).catch(console.error);
+      updateFilterQuery();
+      loadSnapshotWithFallback()
+        .then((snapshot) => applyUpdate(snapshot))
+        .catch(console.error);
     });
     control.addEventListener("input", () => {
-      fetchSnapshot(getSnapshotPath()).then(renderSnapshot).catch(console.error);
+      updateFilterQuery();
+      loadSnapshotWithFallback()
+        .then((snapshot) => applyUpdate(snapshot))
+        .catch(console.error);
     });
   });
 };
@@ -960,16 +1658,51 @@ const initJsonKeyToggle = () => {
   });
 };
 
-const getSnapshotPath = () => {
+const startTransport = () => {
+  loadSnapshotWithFallback()
+    .then((snapshot) => {
+      applyUpdate(snapshot);
+      if (transportMode !== "LIVE") {
+        setConnectionStatus("POLLING");
+      }
+    })
+    .catch((error) => {
+      setConnectionStatus("OFFLINE", error?.message || "Initial load failed");
+    });
+  const liveStarted = startLiveTransport();
+  if (!liveStarted) {
+    setConnectionStatus("POLLING", "EventSource unavailable");
+    startPollingFallback();
+  }
+};
+
+const getSnapshotSources = () => {
   const params = new URLSearchParams(window.location.search);
-  return params.get("source") || DEFAULT_SNAPSHOT_PATH;
+  const override = params.get("source");
+  const apiOverride = params.get("api");
+  const snapshotOverride = params.get("snapshot");
+  const snapshotEndpoint =
+    snapshotOverride || apiOverride || window.CONTROL_ROOM_SNAPSHOT_ENDPOINT || SNAPSHOT_ENDPOINT;
+
+  const sources = [];
+  if (override) {
+    sources.push({ type: "override", path: override });
+  }
+  sources.push({ type: "control-room", path: DEFAULT_SNAPSHOT_PATH });
+  sources.push({ type: "legacy", path: LEGACY_SNAPSHOT_PATH });
+  if (snapshotEndpoint) {
+    sources.push({ type: "api", path: snapshotEndpoint });
+  }
+  return sources;
 };
 
 const boot = () => {
   initControls();
   initExplainPanels();
   initJsonKeyToggle();
-  startPolling(getSnapshotPath());
+  initDrawer();
+  initHierarchySelection();
+  startTransport();
 };
 
 boot();

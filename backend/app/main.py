@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.api import adjudications, artifacts, executions, tasks, verifications, workflows
+from app.api import adjudications, artifacts, control_room_stream, executions, tasks, verifications, workflows
 from app.core.config import settings
 from app.routers import ingest
 
@@ -39,6 +39,7 @@ app.include_router(executions.router, prefix="/api/v1/executions", tags=["execut
 app.include_router(verifications.router, prefix="/api/v1/verifications", tags=["verifications"])
 app.include_router(adjudications.router, prefix="/api/v1/adjudications", tags=["adjudications"])
 app.include_router(ingest.router, prefix="/api/v1/ingest", tags=["ingest"])
+app.include_router(control_room_stream.router, prefix="/api/v1/control-room", tags=["control-room"])
 
 
 @app.get("/")

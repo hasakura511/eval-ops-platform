@@ -1,0 +1,11 @@
+{
+  "schema_version": "control-room-snapshot-v0",
+  "as_of": "2026-01-15T04:12:06.105947Z",
+  "health": {
+    "status": "Nominal",
+    "data_freshness_seconds": 0,
+    "active_alerts_count": 0
+  },
+  "projects": [],
+  "alerts": []
+}
