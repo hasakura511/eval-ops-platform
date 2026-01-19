@@ -206,6 +206,16 @@ body.ultrawide .layout {
   color: var(--warn);
 }
 
+.status-pill.live {
+  background: rgba(46, 139, 87, 0.2);
+  color: var(--ok);
+}
+
+.status-pill.polling {
+  background: rgba(217, 130, 43, 0.2);
+  color: var(--warn);
+}
+
 .status-pill.offline {
   background: rgba(196, 61, 61, 0.2);
   color: var(--danger);
@@ -937,6 +947,27 @@ body.show-json-keys .json-key {
   color: var(--danger);
   font-style: normal;
   font-weight: 600;
+}
+
+.flash-update {
+  animation: flash-update 1.2s ease-out;
+}
+
+@keyframes flash-update {
+  0% {
+    box-shadow: 0 0 0 0 rgba(47, 111, 237, 0.25);
+    background-color: color-mix(in srgb, var(--panel) 85%, var(--accent));
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(47, 111, 237, 0);
+    background-color: transparent;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flash-update {
+    animation: none;
+  }
 }
 
 @media (max-width: 1100px) {

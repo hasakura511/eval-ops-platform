@@ -8,6 +8,17 @@
 - **Optional:** Query string override via `?source=../state/control_room_latest.json` or other snapshot paths under `/state`.
 - **Note:** Phase 0 is snapshot-driven. Phase 1 may swap sources to API/DB, but should preserve this shape (additive only).
 
+## Live update modes (Phase 0)
+
+**Preferred:** Server-Sent Events (SSE) stream with polling fallback.
+
+- **SSE stream:** `GET /api/v1/control-room/stream`
+  - Emits `event: snapshot` with full `ControlRoomSnapshot v0` JSON payloads.
+  - Emits `event: ping` heartbeats every ~15s.
+- **Snapshot endpoint:** `GET /api/v1/control-room/snapshot`
+  - Returns the current snapshot JSON (file-backed).
+  - Used by polling fallback or for first paint when running the backend.
+
 ## ControlRoomSnapshot v0 (top-level)
 
 ```json
@@ -177,3 +188,5 @@
 
 - `?source=../state/samples/control_room_empty.json` — override with any snapshot path.
 - `?api=https://example.com/control-room-snapshot.json` — optional API endpoint (only if provided).
+- `?stream=https://example.com/api/v1/control-room/stream` — override SSE stream endpoint.
+- `?snapshot=https://example.com/api/v1/control-room/snapshot` — override snapshot endpoint.

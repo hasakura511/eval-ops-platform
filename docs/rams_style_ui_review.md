@@ -46,6 +46,8 @@
 ## Phase 0 Acceptance Checklist
 
 - [x] Paths verified (workboard/hierarchy loading via `python -m http.server`).
+- [ ] SSE updates apply when `state/control_room_latest.json` changes (LIVE mode).
+- [ ] Polling fallback kicks in when SSE disconnects (POLLING mode).
 - [ ] Drawer keyboard behavior verified (focus trap + ESC close).
 - [ ] Staleness threshold verified (`STALE_THRESHOLD_SECONDS`).
 - [ ] Empty/loading/error states verified (no runs, no alerts, fetch fail).
