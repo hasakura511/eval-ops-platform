@@ -1,11 +1,13 @@
-const DEFAULT_SNAPSHOT_PATH = "../state/control_room_latest.json";
-const LEGACY_SNAPSHOT_PATH = "../state/latest.json";
+const DEFAULT_SNAPSHOT_PATH = "state/control_room_latest.json";
+const LEGACY_SNAPSHOT_PATH = "state/latest.json";
 const POLL_INTERVAL_MS = 8000;
 const STALE_THRESHOLD_SECONDS = 30;
 const REFRESH_LABEL_INTERVAL_MS = 1000;
 const STREAM_ENDPOINT = "/api/v1/control-room/stream";
 const SNAPSHOT_ENDPOINT = "/api/v1/control-room/snapshot";
 const FLASH_DURATION_MS = 1200;
+const SSE_RETRY_BASE_MS = 2000;
+const SSE_RETRY_MAX_MS = 30000;
 
 const statusClasses = {
   running: "status-running",
@@ -278,11 +280,14 @@ const initExplainPanels = () => {
     });
   });
 
-  document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") {
-      closeExplainPanels();
-    }
-  });
+  if (!explainEscapeBound) {
+    explainEscapeBound = true;
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        closeExplainPanels();
+      }
+    });
+  }
 };
 
 const fetchSnapshot = async (path) => {
@@ -1395,12 +1400,15 @@ let refreshTimer = null;
 let pollingTimer = null;
 let focusTrapCleanup = null;
 let currentSnapshot = null;
-let currentHierarchySignature = "";
+let currentHierarchySignature = null;
 let hierarchyNodeIndex = new Map();
 let selectedRunId = null;
 let transportMode = "POLLING";
 let lastErrorMessage = null;
 let sseSource = null;
+let sseRetryTimer = null;
+let sseRetryDelayMs = SSE_RETRY_BASE_MS;
+let explainEscapeBound = false;
 
 const trapFocus = (container) => {
   const selectors = [
@@ -1558,13 +1566,39 @@ const stopLiveTransport = () => {
   }
 };
 
+const clearSseRetry = () => {
+  if (sseRetryTimer) {
+    clearTimeout(sseRetryTimer);
+    sseRetryTimer = null;
+  }
+};
+
+const resetSseBackoff = () => {
+  sseRetryDelayMs = SSE_RETRY_BASE_MS;
+  clearSseRetry();
+};
+
+const scheduleSseReconnect = () => {
+  if (!window.EventSource) return;
+  if (sseRetryTimer) return;
+  const delay = sseRetryDelayMs;
+  sseRetryTimer = window.setTimeout(() => {
+    sseRetryTimer = null;
+    const started = startLiveTransport();
+    if (!started) scheduleSseReconnect();
+  }, delay);
+  sseRetryDelayMs = Math.min(sseRetryDelayMs * 2, SSE_RETRY_MAX_MS);
+};
+
 const startLiveTransport = () => {
   if (!window.EventSource) return false;
   stopLiveTransport();
+  clearSseRetry();
   try {
     const source = new EventSource(getStreamUrl());
     sseSource = source;
     source.addEventListener("open", () => {
+      resetSseBackoff();
       setConnectionStatus("LIVE");
       if (pollingTimer) {
         clearInterval(pollingTimer);
@@ -1587,6 +1621,7 @@ const startLiveTransport = () => {
       stopLiveTransport();
       setConnectionStatus("POLLING", "SSE disconnected");
       startPollingFallback();
+      scheduleSseReconnect();
     });
     return true;
   } catch (error) {
@@ -1598,22 +1633,31 @@ const startLiveTransport = () => {
 const startPollingFallback = () => {
   const load = async () => {
     try {
-      setConnectionStatus("POLLING");
       const snapshot = await loadSnapshotWithFallback();
       lastRefreshAt = new Date().toISOString();
       applyUpdate(snapshot, { flash: true });
+      if (transportMode !== "POLLING") {
+        setConnectionStatus("POLLING");
+      }
     } catch (error) {
-      setConnectionStatus("OFFLINE", error?.message || "Polling failed");
+      const message = error?.message || "Polling failed";
+      const shouldLog = message !== lastErrorMessage;
+      setConnectionStatus("OFFLINE", message);
       setEmptyState("workboard-list", "Snapshot unavailable.", true);
       setEmptyState("failure-spotlight", "Snapshot unavailable.", true);
       setEmptyState("todo-feed", "Snapshot unavailable.", true);
       setEmptyState("hierarchy-tree", "Snapshot unavailable.", true);
       setEmptyState("alerts-rail", "Snapshot unavailable.", true);
-      console.error(error);
+      if (shouldLog) {
+        console.error(error);
+      }
     }
   };
 
   if (pollingTimer) clearInterval(pollingTimer);
+  if (transportMode !== "POLLING") {
+    setConnectionStatus("POLLING");
+  }
   load();
   if (refreshTimer) clearInterval(refreshTimer);
   refreshTimer = setInterval(() => {
@@ -1622,6 +1666,23 @@ const startPollingFallback = () => {
     }
   }, REFRESH_LABEL_INTERVAL_MS);
   pollingTimer = setInterval(load, POLL_INTERVAL_MS);
+};
+
+const stopPollingFallback = () => {
+  if (pollingTimer) {
+    clearInterval(pollingTimer);
+    pollingTimer = null;
+  }
+  if (refreshTimer) {
+    clearInterval(refreshTimer);
+    refreshTimer = null;
+  }
+};
+
+const shutdownTransport = () => {
+  stopLiveTransport();
+  clearSseRetry();
+  stopPollingFallback();
 };
 
 const initControls = () => {
@@ -1673,6 +1734,7 @@ const startTransport = () => {
   if (!liveStarted) {
     setConnectionStatus("POLLING", "EventSource unavailable");
     startPollingFallback();
+    scheduleSseReconnect();
   }
 };
 
@@ -1702,6 +1764,8 @@ const boot = () => {
   initJsonKeyToggle();
   initDrawer();
   initHierarchySelection();
+  window.addEventListener("beforeunload", shutdownTransport);
+  window.addEventListener("pagehide", shutdownTransport);
   startTransport();
 };
 

@@ -7,6 +7,11 @@
 - `dashboard/assets/styles.css`
 - `dashboard/assets/control_room.js`
 
+## PR Notes (Phase 0)
+
+- Phase 0 is UI-only; SSE is file-backed; no DB changes.
+- Data source priority: `control_room_latest` -> legacy (`state/latest.json`) -> optional API snapshot.
+
 ## Findings & Fixes
 
 ### Accessibility (A11y)
@@ -46,9 +51,19 @@
 ## Phase 0 Acceptance Checklist
 
 - [x] Paths verified (workboard/hierarchy loading via `python -m http.server`).
-- [ ] SSE updates apply when `state/control_room_latest.json` changes (LIVE mode).
-- [ ] Polling fallback kicks in when SSE disconnects (POLLING mode).
+- [x] SSE updates apply when `state/control_room_latest.json` changes (LIVE mode).
+- [x] Polling fallback kicks in when SSE disconnects (POLLING mode).
 - [ ] Drawer keyboard behavior verified (focus trap + ESC close).
 - [ ] Staleness threshold verified (`STALE_THRESHOLD_SECONDS`).
-- [ ] Empty/loading/error states verified (no runs, no alerts, fetch fail).
+- [x] Empty/loading/error states verified (no runs, no alerts, fetch fail).
 - [ ] Hierarchy scaling strategy stated (nested groups + scroll).
+
+## Verification Evidence
+
+- Snapshot endpoint: `curl -i http://127.0.0.1:8000/api/v1/control-room/snapshot` → HTTP 200 with JSON payload.
+- SSE stream: `content-type: text/event-stream`, `cache-control: no-cache`, heartbeat `event: ping` observed at ~15s.
+- Change trigger: updating `state/control_room_latest.json` emitted a new `event: snapshot` with updated `as_of`.
+- Static polling: Playwright opened workboard + hierarchy under `python -m http.server` and reported `POLLING`.
+- Fetch failure: renaming `state/control_room_latest.json` + `state/latest.json` showed `OFFLINE` + error placeholders; console error count stayed flat across 18s; restoring files returned to `POLLING`.
+- Empty states: `?source=state/samples/control_room_empty.json` showed "No runs match current filters.", "No hierarchy data available.", and "No alerts."
+- Screenshots: `docs/screenshots/control-room-workboard.png`, `docs/screenshots/control-room-hierarchy.png`.

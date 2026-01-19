@@ -39,6 +39,7 @@ async def get_snapshot() -> JSONResponse:
 
 async def event_stream(request: Request) -> AsyncGenerator[str, None]:
     last_hash: str | None = None
+    last_error: str | None = None
     last_ping = time.monotonic()
 
     while True:
@@ -47,15 +48,22 @@ async def event_stream(request: Request) -> AsyncGenerator[str, None]:
 
         try:
             payload = read_snapshot_bytes()
+            last_error = None
             current_hash = snapshot_hash(payload)
             if current_hash != last_hash:
                 last_hash = current_hash
                 data = payload.decode("utf-8")
                 yield f"event: snapshot\ndata: {data}\n\n"
         except FileNotFoundError as exc:
-            yield f"event: error\ndata: {json.dumps({'message': str(exc)})}\n\n"
+            message = str(exc)
+            if message != last_error:
+                last_error = message
+                yield f"event: error\ndata: {json.dumps({'message': message})}\n\n"
         except Exception as exc:  # pragma: no cover - defensive logging
-            yield f"event: error\ndata: {json.dumps({'message': str(exc)})}\n\n"
+            message = str(exc)
+            if message != last_error:
+                last_error = message
+                yield f"event: error\ndata: {json.dumps({'message': message})}\n\n"
 
         now = time.monotonic()
         if now - last_ping >= HEARTBEAT_INTERVAL_S:
@@ -67,4 +75,13 @@ async def event_stream(request: Request) -> AsyncGenerator[str, None]:
 
 @router.get("/stream")
 async def stream_snapshot(request: Request) -> StreamingResponse:
-    return StreamingResponse(event_stream(request), media_type="text/event-stream")
+    headers = {
+        "Cache-Control": "no-cache",
+        "Connection": "keep-alive",
+        "X-Accel-Buffering": "no",
+    }
+    return StreamingResponse(
+        event_stream(request),
+        media_type="text/event-stream",
+        headers=headers,
+    )
