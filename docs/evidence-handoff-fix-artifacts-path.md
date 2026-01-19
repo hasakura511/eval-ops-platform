@@ -1,3 +1,19 @@
+# Evidence: handoff-fix-artifacts-path
+
+## git status
+```
+## main...origin/main
+```
+
+## git log --oneline -3
+```
+870a206 Merge pull request #8 from hasakura511/codex/perform-repository-hygiene-and-verification-tasks
+39aba9c Phase 0: verify drawer/staleness; finalize static fixtures + docs
+df75e8b Ignore cache directory
+```
+
+## backend/app/core/config.py
+```
 """
 Application configuration.
 """
@@ -19,7 +35,7 @@ class Settings(BaseSettings):
     
     # Storage
     STORAGE_TYPE: str = "local"  # "local" or "s3"
-    STORAGE_PATH: str = "artifacts"
+    STORAGE_PATH: str = "/app/artifacts"
     S3_BUCKET_NAME: str = ""
     S3_ENDPOINT_URL: str = ""
     
@@ -34,3 +50,4 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+```
