@@ -22,6 +22,7 @@ If port 8001 is in use, pick another free port.
 - Planning UI: `dashboard/` (workboard + hierarchy)
 - Snapshot data: `state/control_room_latest.json` (UI contract)
 - Snapshot spec: `docs/control_room_snapshot_v0.md`
+- ATP streams + CLI: `docs/atp.md`
 
 ## Intentionally stubbed (not implemented yet)
 - No runner execution or task orchestration.

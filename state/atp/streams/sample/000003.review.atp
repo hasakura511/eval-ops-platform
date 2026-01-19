@@ -1,0 +1,35 @@
+ATP/0.1
+ID: sample/000003
+TS: 2024-02-01T10:20:00Z
+MODE: REVIEW
+TASK: control-room-bootstrap
+STATE: git=sample dirty=0
+PARENT: sample/000002
+ETAG: null
+TOOLS: read
+APPROVAL: granted_by_human
+FAIL_CLASS: NONE
+
+GOAL: Human approval recorded for the snapshot rollout.
+
+NOW:
+- Approval granted pending artifact repair.
+
+NEXT:
+- Replace missing artifact with valid manifest.
+
+RISKS:
+- Stale artifacts can hide regressions.
+
+ACCEPT:
+- Human rationale recorded in review packet.
+- Approval is append-only.
+
+ARTIFACTS:
+- manifest: state/artifacts/900623dc82b03c3661716e356ac09426a6abd505b2e069a933fe34e08e59245d/manifest.json
+- manifest: state/artifacts/missing-hash/manifest.json
+
+QUESTIONS:
+- none
+
+CONFIDENCE: 0.71

@@ -1,0 +1,35 @@
+ATP/0.1
+ID: sample/000002
+TS: 2024-02-01T10:10:00Z
+MODE: EXEC
+TASK: control-room-bootstrap
+STATE: git=sample dirty=0
+PARENT: sample/000001
+ETAG: null
+TOOLS: edit, exec
+APPROVAL: requested
+FAIL_CLASS: NONE
+
+GOAL: Build the deterministic snapshot and stream panels.
+
+NOW:
+- UI scaffolding is ready for stream list.
+- Snapshot builder needs stream status derivation.
+
+NEXT:
+- Generate snapshot from sample stream.
+- Request human approval for rollout.
+
+RISKS:
+- Missing artifact will block approval.
+
+ACCEPT:
+- Snapshot shows latest packet and timeline.
+
+ARTIFACTS:
+- manifest: state/artifacts/missing-hash/manifest.json
+
+QUESTIONS:
+- Are approval thresholds defined?
+
+CONFIDENCE: 0.55

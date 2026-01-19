@@ -1,0 +1,35 @@
+ATP/0.1
+ID: sample/000001
+TS: 2024-02-01T10:00:00Z
+MODE: PLAN
+TASK: control-room-bootstrap
+STATE: git=sample dirty=0
+PARENT: null
+ETAG: null
+TOOLS: read, diff
+APPROVAL: none
+FAIL_CLASS: NONE
+
+GOAL: Bootstrap control room stream visibility.
+
+NOW:
+- Streams need indexing for UI.
+- Snapshot builder must be deterministic.
+
+NEXT:
+- Build snapshot output for stream list.
+- Draft UI panels for stream detail and timeline.
+
+RISKS:
+- Missing artifacts could block review.
+
+ACCEPT:
+- Streams appear in the Control Room list.
+
+ARTIFACTS:
+- manifest: state/artifacts/900623dc82b03c3661716e356ac09426a6abd505b2e069a933fe34e08e59245d/manifest.json
+
+QUESTIONS:
+- none
+
+CONFIDENCE: 0.62

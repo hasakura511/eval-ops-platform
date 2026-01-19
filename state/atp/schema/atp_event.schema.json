@@ -21,6 +21,10 @@
     "summary": {
       "type": "string",
       "minLength": 1
+    },
+    "packet_id": {
+      "type": "string",
+      "pattern": "^[^/]+/\\d{6}$"
     }
   }
 }

@@ -9,7 +9,17 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.api import adjudications, artifacts, control_room_stream, executions, tasks, verifications, workflows
+from app.api import (
+    adjudications,
+    artifacts,
+    atp_streams,
+    control_room_snapshot,
+    control_room_stream,
+    executions,
+    tasks,
+    verifications,
+    workflows,
+)
 from app.core.config import settings
 from app.routers import ingest
 
@@ -40,6 +50,8 @@ app.include_router(verifications.router, prefix="/api/v1/verifications", tags=["
 app.include_router(adjudications.router, prefix="/api/v1/adjudications", tags=["adjudications"])
 app.include_router(ingest.router, prefix="/api/v1/ingest", tags=["ingest"])
 app.include_router(control_room_stream.router, prefix="/api/v1/control-room", tags=["control-room"])
+app.include_router(control_room_snapshot.router, prefix="/api", tags=["control-room"])
+app.include_router(atp_streams.router, prefix="/api", tags=["atp"])
 
 
 @app.get("/")

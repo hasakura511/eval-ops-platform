@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Control Room · Streams</title>
+  <link rel="stylesheet" href="assets/styles.css" />
+</head>
+<body class="portrait">
+  <header class="site-header">
+    <div class="brand">
+      <span class="brand-title">Control Room</span>
+      <span class="brand-subtitle">Streams</span>
+    </div>
+    <nav class="nav" aria-label="Primary">
+      <a class="nav-link" href="workboard.html">Workboard</a>
+      <a class="nav-link" href="hierarchy.html">Hierarchy</a>
+      <a class="nav-link active" href="streams.html">Streams</a>
+    </nav>
+  </header>
+
+  <main class="layout streams-layout">
+    <section class="panel" aria-labelledby="streams-list-title">
+      <div class="panel-header">
+        <div>
+          <h1 class="panel-title" id="streams-list-title">Stream List</h1>
+          <p class="panel-subtitle">Append-only ATP streams with latest packet and approval state.</p>
+        </div>
+        <div class="status">
+          <span class="status-pill" id="streams-snapshot-status">Loading…</span>
+        </div>
+      </div>
+      <div class="stream-list" id="stream-list">
+        <div class="empty">Loading streams…</div>
+      </div>
+    </section>
+
+    <section class="panel" aria-labelledby="streams-detail-title">
+      <div class="panel-header">
+        <div>
+          <h2 class="panel-title" id="streams-detail-title">Stream Detail</h2>
+          <p class="panel-subtitle" id="stream-detail-subtitle">Select a stream to inspect.</p>
+        </div>
+        <button class="button" type="button" id="approve-button" disabled>Approve</button>
+      </div>
+
+      <div class="stream-detail-grid">
+        <div>
+          <h3>Packet Chain</h3>
+          <div class="stream-packets" id="stream-packets">
+            <div class="empty">No stream selected.</div>
+          </div>
+        </div>
+        <div>
+          <h3>Timeline</h3>
+          <div class="stream-timeline" id="stream-timeline">
+            <div class="empty">No events loaded.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="stream-why" id="stream-why">
+        <h3>Why did we do X?</h3>
+        <div class="stream-why-body" id="stream-why-body">
+          <div class="empty">Select a packet to view headers, body, and artifacts.</div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <dialog id="approval-modal" class="modal">
+    <form method="dialog" class="modal-card" id="approval-form">
+      <header class="modal-header">
+        <h2>Approve Stream</h2>
+        <button class="button ghost" type="button" data-modal-close>Close</button>
+      </header>
+      <label class="modal-label" for="approval-rationale">Rationale (required)</label>
+      <textarea id="approval-rationale" rows="4" placeholder="Why is this approval granted?"></textarea>
+      <div class="modal-actions">
+        <button class="button ghost" type="button" data-modal-close>Cancel</button>
+        <button class="button" type="submit" id="approval-submit">Approve</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="assets/streams.js"></script>
+</body>
+</html>
