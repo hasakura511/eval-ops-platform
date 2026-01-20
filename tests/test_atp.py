@@ -66,3 +66,29 @@ def test_bundle_artifact(atp_root):
     data = json.loads(manifest.read_text())
     assert data["kind"] == "diff"
     assert input_file.name in data["files"]
+
+
+def test_schema_validation_sample_packets():
+    repo_root = Path(__file__).resolve().parents[1]
+    sample_stream = repo_root / "state" / "atp" / "streams" / "sample"
+    packet_files = sorted(sample_stream.glob("*.atp"))
+    assert packet_files, "Sample packets missing."
+    for packet in packet_files:
+        parsed = atp.parse_packet_file(packet)
+        assert parsed["ATP"] == "ATP/0.1"
+
+
+def test_approve_appends_review_packet(atp_root):
+    info = atp.write_packet("EXEC", "approve-test", None, atp_root)
+    stream_path = atp.streams_dir(atp_root) / info.stream_id
+    before_packets = sorted(stream_path.glob("*.atp"))
+
+    review = atp.approve_stream(info.stream_id, "approved for release", atp_root)
+    after_packets = sorted(stream_path.glob("*.atp"))
+
+    assert review.path.name.endswith(".review.atp")
+    assert len(after_packets) == len(before_packets) + 1
+
+    events_path = stream_path / "events.jsonl"
+    lines = events_path.read_text().splitlines()
+    assert any("APPROVAL_GRANTED" in line for line in lines)

@@ -12,7 +12,11 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = "Eval Ops Platform"
     
     # CORS
-    ALLOWED_ORIGINS: List[str] = ["http://localhost:3000", "http://localhost:8000"]
+    ALLOWED_ORIGINS: List[str] = [
+        "http://localhost:3000",
+        "http://localhost:8000",
+        "http://localhost:8001",
+    ]
     
     # Database
     DATABASE_URL: str = "postgresql://postgres:postgres@db:5432/evalops"

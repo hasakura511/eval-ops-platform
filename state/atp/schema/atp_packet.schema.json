@@ -14,15 +14,14 @@
     "ETAG",
     "TOOLS",
     "APPROVAL",
+    "FAIL_CLASS",
     "goal",
     "now",
     "next",
     "risks",
     "accept",
     "artifacts",
-    "status",
-    "fail_class",
-    "fail_symptom"
+    "questions"
   ],
   "additionalProperties": false,
   "properties": {
@@ -51,20 +50,23 @@
       "minLength": 1
     },
     "PARENT": {
-      "type": "string",
-      "minLength": 1
+      "type": ["string", "null"]
     },
     "ETAG": {
-      "type": "string",
-      "minLength": 1
+      "type": ["string", "null"]
     },
     "TOOLS": {
-      "type": "string",
-      "minLength": 1
+      "type": "array",
+      "items": {"type": "string"},
+      "minItems": 0
     },
     "APPROVAL": {
       "type": "string",
       "enum": ["none", "requested", "granted_by_human"]
+    },
+    "FAIL_CLASS": {
+      "type": "string",
+      "enum": ["NONE", "SPEC", "ENV", "TEST", "LOGIC", "INTEGRATION", "DATA", "TOOLING"]
     },
     "goal": {
       "type": "string",
@@ -73,47 +75,43 @@
     "now": {
       "type": "array",
       "items": {"type": "string"},
-      "maxItems": 3
+      "minItems": 0
     },
     "next": {
       "type": "array",
       "items": {"type": "string"},
-      "maxItems": 3
+      "minItems": 0
     },
     "risks": {
       "type": "array",
       "items": {"type": "string"},
-      "maxItems": 2
+      "minItems": 0
     },
     "accept": {
       "type": "array",
       "items": {"type": "string"},
-      "maxItems": 2
+      "minItems": 0
     },
     "artifacts": {
       "type": "object",
       "additionalProperties": false,
+      "required": ["manifests"],
       "properties": {
-        "manifest": {"type": "string"},
-        "diff": {"type": "string"},
-        "logs": {"type": "string"},
-        "trace": {"type": "string"}
+        "manifests": {
+          "type": "array",
+          "items": {"type": "string"},
+          "minItems": 0
+        }
       }
     },
     "questions": {
       "type": "array",
       "items": {"type": "string"}
     },
-    "status": {
-      "type": "string",
-      "enum": ["OK", "NEEDS_INFO", "BLOCKED", "FAILED", "ROLLED_BACK"]
-    },
-    "fail_class": {
-      "type": "string",
-      "enum": ["NONE", "SPEC", "ENV", "TEST", "LOGIC", "INTEGRATION", "DATA", "TOOLING"]
-    },
-    "fail_symptom": {
-      "type": "string"
+    "confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
     }
   }
 }

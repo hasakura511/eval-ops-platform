@@ -19,6 +19,8 @@ Create packets and events with `python tools/atp.py`:
 - `python tools/atp.py new --mode PLAN --task my-task`
 - `python tools/atp.py etag state/atp/streams/<id>/000001.request.atp`
 - `python tools/atp.py event --stream <id> --type PLAN_CREATED --summary "..."`
+- `python tools/atp.py approve --stream <id> --rationale "Approved"`
+- `python tools/atp.py index --write`
 - `python tools/atp.py bundle --stream <id> --kind diff --in path/to/diff.patch`
 
 Schemas live in `state/atp/schema/` and examples in `state/atp/examples/`.
