@@ -1,8 +1,8 @@
 import os
 
-from media_hint_eval.schemas import Features
-from media_hint_eval.score import detect_mode, score_features
-from media_hint_eval.utils import load_yaml
+from tools.media_hint_eval.schemas import Features
+from tools.media_hint_eval.score import detect_mode, score_features
+from tools.media_hint_eval.utils import load_yaml
 
 
 CONFIG_PATH = os.path.join(os.path.dirname(__file__), "..", "config", "thresholds.yaml")

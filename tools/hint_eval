@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from media_hint_eval.cli import main
+from tools.media_hint_eval.cli import main
 
 
 if __name__ == "__main__":

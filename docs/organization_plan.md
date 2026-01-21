@@ -6,10 +6,12 @@ A flat, explicit map of where things live so the repo feels like a clean desk.
 - `dashboard/`: UI pages and assets (workboard + hierarchy).
 - `docs/`: Documentation and specs (see sections below).
 - `state/`: Snapshot JSON inputs for the UI.
-- `tools/`: Scripts (telemetry generation, contract tests, utilities).
+- `tools/`: Scripts, telemetry generation, contract tests, and evaluation tooling (`tools/hint_eval`, `tools/media_hint_eval/`).
 - `backend/`: API stubs and service scaffolding.
 - `tests/`: Automated tests and fixtures.
-- `examples/`, `schemas/`, `records/`, `config/`: Supporting assets and data.
+- `examples/`, `schemas/`, `config/`: Supporting assets and data.
+- `records/`: Artifacts, ledgers, provenance, and baseline diffs (`records/baseline_diff/`).
+- `docker-compose.yml`, `setup.sh`, `action.sh`, `README.md`, `README.v0.md`, `EXAMPLE.md`: Repo-level onboarding and environment helpers.
 
 ## TODOs (single place)
 - `docs/todo/`: All TODO drafts and backlog notes live here.
@@ -23,6 +25,7 @@ A flat, explicit map of where things live so the repo feels like a clean desk.
 ## How to run
 - Root quick-start: `README.md`.
 - Docs quick-start: `docs/README.md`.
+- LLM quickstart index: `docs/llm_quickstart.md`.
 
 ## Rules of the desk
 - Keep status in `docs/status_board.md` (done vs. planned vs. stubbed).

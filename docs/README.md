@@ -8,6 +8,10 @@ See `docs/status_board.md` for a grouped view of done vs. planned work.
 
 See `docs/organization_plan.md` for a flat, explicit map of where TODOs, specs, tools, and dashboards live.
 
+## LLM quickstart
+
+See `docs/llm_quickstart.md` for a fast index that minimizes search time.
+
 ## Generate dummy telemetry
 
 ```bash

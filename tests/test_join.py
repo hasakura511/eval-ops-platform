@@ -2,7 +2,7 @@ import json
 import os
 import pytest
 
-from media_hint_eval.cli import cmd_join
+from tools.media_hint_eval.cli import cmd_join
 
 
 def test_join_fixtures(tmp_path):

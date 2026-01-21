@@ -7,23 +7,23 @@ This package implements a deterministic, cache-first evaluation pipeline for Med
 ```bash
 python -m venv venv
 source venv/bin/activate
-pip install -r media_hint_eval/requirements.txt
+pip install -r tools/media_hint_eval/requirements.txt
 python -m playwright install
 ```
 
 Collect -> extract -> score:
 
 ```bash
-./hint_eval collect --input examples/sample_tasks.jsonl --cache-dir cache/ --collect-alternatives
-./hint_eval extract --cache-dir cache/ --out features.jsonl
-./hint_eval score --features features.jsonl --config config/thresholds.yaml --out preds.jsonl
+./tools/hint_eval collect --input examples/sample_tasks.jsonl --cache-dir cache/ --collect-alternatives
+./tools/hint_eval extract --cache-dir cache/ --out features.jsonl
+./tools/hint_eval score --features features.jsonl --config config/thresholds.yaml --out preds.jsonl
 ```
 
 Fit thresholds and evaluate:
 
 ```bash
-./hint_eval fit --train examples/sample_labeled.jsonl --cache-dir cache/ --config-in config/thresholds.yaml --config-out config/thresholds.fitted.yaml
-./hint_eval eval --labeled examples/sample_labeled.jsonl --cache-dir cache/ --config config/thresholds.fitted.yaml
+./tools/hint_eval fit --train examples/sample_labeled.jsonl --cache-dir cache/ --config-in config/thresholds.yaml --config-out config/thresholds.fitted.yaml
+./tools/hint_eval eval --labeled examples/sample_labeled.jsonl --cache-dir cache/ --config config/thresholds.fitted.yaml
 ```
 
 Notes:
@@ -38,28 +38,28 @@ This demo uses `tests/fixtures/cache` to run end-to-end without network access.
 
 1) Extract features from fixtures
 ```bash
-./hint_eval extract --cache-dir tests/fixtures/cache --out /tmp/features.fixtures.jsonl
+./tools/hint_eval extract --cache-dir tests/fixtures/cache --out /tmp/features.fixtures.jsonl
 ```
 
 2) Join labels + features
 ```bash
-./hint_eval join --labeled examples/fixture_labeled.jsonl \\
+./tools/hint_eval join --labeled examples/fixture_labeled.jsonl \\
   --features /tmp/features.fixtures.jsonl \\
   --out /tmp/labeled_with_features.fixtures.jsonl
 ```
 
 3) Evaluate baseline
 ```bash
-./hint_eval eval --labeled /tmp/labeled_with_features.fixtures.jsonl --config config/thresholds.yaml
+./tools/hint_eval eval --labeled /tmp/labeled_with_features.fixtures.jsonl --config config/thresholds.yaml
 ```
 
 4) Fit and re-evaluate
 ```bash
-./hint_eval fit --train /tmp/labeled_with_features.fixtures.jsonl \\
+./tools/hint_eval fit --train /tmp/labeled_with_features.fixtures.jsonl \\
   --config-in config/thresholds.yaml \\
   --config-out config/thresholds.fitted.fixtures.yaml
 
-./hint_eval eval --labeled /tmp/labeled_with_features.fixtures.jsonl --config config/thresholds.fitted.fixtures.yaml
+./tools/hint_eval eval --labeled /tmp/labeled_with_features.fixtures.jsonl --config config/thresholds.fitted.fixtures.yaml
 ```
 
 The confusion matrix is non-empty and accuracy is printed for both runs; on larger datasets you should see accuracy changes as thresholds adapt.

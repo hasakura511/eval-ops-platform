@@ -2,8 +2,8 @@ import os
 import pytest
 import math
 
-from media_hint_eval.cli import _compute_metrics
-from media_hint_eval.utils import read_jsonl
+from tools.media_hint_eval.cli import _compute_metrics
+from tools.media_hint_eval.utils import read_jsonl
 
 
 def test_read_jsonl_skips_blank_lines():
