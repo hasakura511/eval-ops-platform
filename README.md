@@ -24,6 +24,9 @@ If port 8001 is in use, pick another free port.
 - Snapshot spec: `docs/control_room_snapshot_v0.md`
 - ATP streams + CLI: `docs/atp.md`
 
+## Organization plan
+See `docs/organization_plan.md` for a simple, flat map of where things live (including TODOs).
+
 ## Status board (done vs. planned)
 See `docs/status_board.md` for a grouped view of what is done, what is still stubbed, and what is planned next.
 
