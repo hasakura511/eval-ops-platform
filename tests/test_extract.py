@@ -1,7 +1,7 @@
 import os
 
-from media_hint_eval.extract import extract_cache
-from media_hint_eval.utils import read_jsonl
+from tools.media_hint_eval.extract import extract_cache
+from tools.media_hint_eval.utils import read_jsonl
 
 
 FIXTURE_CACHE = os.path.join(os.path.dirname(__file__), "fixtures", "cache")
