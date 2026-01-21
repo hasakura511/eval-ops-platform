@@ -19,22 +19,19 @@ Then open:
 If port 8001 is in use, pick another free port.
 
 ## Where things live
-- Planning UI: `dashboard/` (workboard + hierarchy)
-- Snapshot data: `state/control_room_latest.json` (UI contract)
+- Planning UI (workboard + hierarchy): `dashboard/`
+- Snapshot data (UI contract): `state/control_room_latest.json`
 - Snapshot spec: `docs/control_room_snapshot_v0.md`
 - ATP streams + CLI: `docs/atp.md`
 
-## Intentionally stubbed (not implemented yet)
-- No runner execution or task orchestration.
-- No DB wiring or migrations for the Control Room snapshot.
-- No write actions from the UI (it is read-only).
-- Metrics formulas and thresholds are placeholders until defined in the spec.
-- Authentication, authorization, and multi-tenant routing.
+## Organization plan
+See `docs/organization_plan.md` for a simple, flat map of where things live (including TODOs).
 
-## Next phases
-- Phase 1: Wire a read-only snapshot endpoint (e.g., GET /api/v1/control-room/snapshot).
-- Phase 2: Add bilingual metrics and calibration guidance to the snapshot contract.
-- Phase 3: Add a Run Detail view with explain panels for per-run artifacts and audits.
+## Status board (done vs. planned)
+See `docs/status_board.md` for a grouped view of what is done, what is still stubbed, and what is planned next.
+
+## Intentionally stubbed (not implemented yet)
+This is tracked in the status board so the "done vs. planned" view stays organized in one place.
 
 ## Changelog / What Changed (v1 vs v0)
 - Shifted from backend-first API platform to UI-first explainable prototype.

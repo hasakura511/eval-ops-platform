@@ -1,5 +1,13 @@
 # Bureaucratic Autoregression Control Room
 
+## Status board
+
+See `docs/status_board.md` for a grouped view of done vs. planned work.
+
+## Organization plan
+
+See `docs/organization_plan.md` for a flat, explicit map of where TODOs, specs, tools, and dashboards live.
+
 ## Generate dummy telemetry
 
 ```bash
