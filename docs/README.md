@@ -1,5 +1,9 @@
 # Bureaucratic Autoregression Control Room
 
+## Status board
+
+See `docs/status_board.md` for a grouped view of done vs. planned work.
+
 ## Generate dummy telemetry
 
 ```bash
