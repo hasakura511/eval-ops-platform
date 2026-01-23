@@ -17,6 +17,98 @@ class RatingResult:
 VALID_RATINGS = ["Perfect", "Excellent", "Good", "Acceptable", "Off-Topic", "Problem"]
 
 
+# =============================================================================
+# Helper Functions for Rating Modifiers
+# =============================================================================
+
+
+def is_classic_content(
+    title: str,
+    year: Optional[int],
+    imdb_rating_count: Optional[int],
+) -> bool:
+    """
+    Detect classic content that should have recency waived.
+
+    Per guideline 2.2.3.2:
+    "Ignore recency for classic movies and tv shows that were among the
+    most popular in their decade or have high popularity today."
+
+    Heuristic: >100K IMDB ratings OR year < 2010 with >50K ratings
+    """
+    if imdb_rating_count and imdb_rating_count > 100000:
+        return True
+    if year and year < 2010 and imdb_rating_count and imdb_rating_count > 50000:
+        return True
+    return False
+
+
+def is_atv_plus_content(result_source: Optional[str]) -> bool:
+    """
+    Check if content is Apple TV+ original.
+
+    Per guideline 2.2.2.1:
+    "Popularity is slightly less strict for ATV+ content.
+    If in doubt about 'Good' or 'Excellent' for ATV+ result, select 'Excellent'"
+    """
+    if result_source:
+        source_lower = result_source.lower()
+        return "apple tv+" in source_lower or "atv+" in source_lower or "apple tv plus" in source_lower
+    return False
+
+
+def has_major_awards(lookup_info: Optional[str]) -> bool:
+    """
+    Check if content won major awards (Oscar, Emmy, Golden Globe, BAFTA).
+
+    Per image_12.png (Time Period matrix):
+    Popular + Award = Excellent (not just ultra-popular)
+    """
+    if not lookup_info:
+        return False
+    awards = ["oscar", "emmy", "golden globe", "academy award", "bafta", "won best"]
+    lookup_lower = lookup_info.lower()
+    return any(award in lookup_lower for award in awards)
+
+
+def is_ultra_popular(
+    imdb_rank: Optional[int],
+    imdb_rating_count: Optional[int],
+) -> bool:
+    """
+    Detect ultra-popular content.
+
+    Per guideline 3.4.1 (Time Period):
+    "Excellent = Top 50 viewed in decade / Top 10 in year"
+
+    Proxy: IMDB top 250, or >500K ratings
+    """
+    if imdb_rank and imdb_rank <= 250:
+        return True
+    if imdb_rating_count and imdb_rating_count > 500000:
+        return True
+    return False
+
+
+def demote_rating(rating: str) -> str:
+    """
+    Demote rating by one level.
+
+    Per image_10.png: Similarity results on navigational queries
+    get demoted by 1 level:
+    - Excellent → Good
+    - Good → Acceptable
+    - Acceptable → Off-Topic
+    """
+    demotion = {
+        "Perfect": "Excellent",
+        "Excellent": "Good",
+        "Good": "Acceptable",
+        "Acceptable": "Off-Topic",
+    }
+    return demotion.get(rating, rating)
+
+
 def rate_browse(
     query: str,
     result_title: str,
@@ -30,6 +122,9 @@ def rate_browse(
     is_kids_content: bool = False,
     is_kids_query: bool = False,
     lookup_info: Optional[str] = None,
+    result_source: Optional[str] = None,
+    imdb_rating_count: Optional[int] = None,
+    imdb_rank: Optional[int] = None,
 ) -> str:
     """
     Rate Browse query results.
@@ -43,29 +138,59 @@ def rate_browse(
     - Not relevant = Off-Topic
 
     Time-period queries waive recency requirement.
+    Classic content waives recency (guideline 2.2.3.2).
+    ATV+ content gets benefit of doubt Good→Excellent (guideline 2.2.2.1).
     Kids content demoted by 1 unless kids query.
     """
     if not is_relevant:
         return "Off-Topic"
 
-    # Time period queries waive recency
-    if is_time_period_query:
-        is_recent = True  # Waived
+    # Parse year for classic detection
+    year_int = None
+    if result_year:
+        try:
+            year_int = int(result_year[:4]) if len(result_year) >= 4 else int(result_year)
+        except (ValueError, TypeError):
+            pass
 
-    if is_popular and is_recent:
-        rating = "Excellent"
-    elif is_popular or is_recent:
-        rating = "Good"
+    # Classic content waives recency (guideline 2.2.3.2)
+    if is_classic_content(result_title, year_int, imdb_rating_count):
+        is_recent = True  # Waived for classics
+
+    # Time period queries have special logic (image_12.png)
+    if is_time_period_query:
+        # Ultra-popular = Excellent (regardless of awards)
+        if is_ultra_popular(imdb_rank, imdb_rating_count):
+            rating = "Excellent"
+        # Popular + Award = Excellent
+        elif is_popular and has_major_awards(lookup_info):
+            rating = "Excellent"
+        # Popular (no award) = Good
+        elif is_popular:
+            rating = "Good"
+        # Not popular = Acceptable
+        else:
+            rating = "Acceptable"
     else:
-        rating = "Acceptable"
+        # Standard Browse logic
+        if is_popular and is_recent:
+            rating = "Excellent"
+        elif is_popular or is_recent:
+            rating = "Good"
+        else:
+            rating = "Acceptable"
+
+    # ATV+ benefit of doubt: Good → Excellent (guideline 2.2.2.1)
+    if rating == "Good" and is_atv_plus_content(result_source):
+        rating = "Excellent"
 
     # Kids content demotion (but never below Acceptable)
     if is_kids_content and not is_kids_query and rating != "Acceptable":
-        demotion = {
+        kids_demotion = {
             "Excellent": "Good",
             "Good": "Acceptable",
         }
-        rating = demotion.get(rating, rating)
+        rating = kids_demotion.get(rating, rating)
 
     return rating
 
@@ -78,16 +203,18 @@ def rate_similarity(
     factual_match: bool,
     theme_match: bool,
     lookup_info: Optional[str] = None,
+    on_navigational_query: bool = False,
 ) -> str:
     """
     Rate Similarity query results.
 
     No Perfect for Similarity - ceiling is Excellent.
 
-    Rating matrix:
+    Rating matrix (per image_06.png):
     - 3/3 categories = Excellent
     - 2/3 categories = Good
-    - 1/3 categories = Acceptable
+    - Target Audience alone = Good (special case!)
+    - Factual or Theme alone = Acceptable
     - 0/3 categories = Off-Topic
 
     Categories:
@@ -98,17 +225,29 @@ def rate_similarity(
     CRITICAL: Theme similarity bar is HIGH.
     Same studio + same director does NOT imply same theme.
     Must verify actual story themes match.
+
+    When on_navigational_query=True, demote by 1 level (image_10.png).
     """
     matches = sum([target_audience_match, factual_match, theme_match])
 
     if matches == 3:
-        return "Excellent"
+        rating = "Excellent"
     elif matches == 2:
-        return "Good"
+        rating = "Good"
     elif matches == 1:
-        return "Acceptable"
+        # Bug 1 fix: Target Audience alone = Good (per image_06.png row 5)
+        if target_audience_match:
+            rating = "Good"
+        else:
+            rating = "Acceptable"
     else:
-        return "Off-Topic"
+        rating = "Off-Topic"
+
+    # Bug 6 fix: Similarity on Navigational = demote by 1 (per image_10.png)
+    if on_navigational_query:
+        rating = demote_rating(rating)
+
+    return rating
 
 
 def rate_navigational(
