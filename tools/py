@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# Portable python3 wrapper — eliminates "command not found: python" on macOS
+set -euo pipefail
+exec python3 "$@"
